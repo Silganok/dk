@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dragon's Knight - Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/global.css">
+    <!-- 인증 리다이렉트 스크립트를 가장 먼저 실행 -->
+    <script>
+        if (!sessionStorage.getItem('lastAccount') || !sessionStorage.getItem('lastSlot')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 메인 게임 뷰 -->
+        <div id="main-game-view" style="display: block; height: 100%; display: flex; flex-direction: column;">
+            <!-- 상단 헤더 및 탭 영역 -->
+            <header class="game-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 style="margin-bottom:0;">Dragon's Knight</h1>
+                <button class="action-btn" id="btn-to-char-select" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #64748b; color: #cbd5e1;" onclick="window.location.href='index.html';">선택창으로</button>
+            </header>
+            <nav class="tabs" style="margin: 0 24px;">
+                <button class="tab-btn active" data-target="town">마을</button>
+                <button class="tab-btn" data-target="field">필드</button>
+                <button class="tab-btn" data-target="info">정보</button>
+                <button class="tab-btn" data-target="inventory">인벤토리</button>
+            </nav>
+
+            <!-- 글로벌 상단 스탯 바 -->
+            <div id="global-status-bar" style="margin: 8px 24px; padding: 8px 16px; background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 6px; display: flex; justify-content: space-between; font-size: 13px; font-weight: bold;">
+                <div><span style="color: #ef4444;">HP</span> <span id="g-hp" style="color:#cbd5e1;">0/0</span></div>
+                <div><span style="color: #3b82f6;">MP</span> <span id="g-mp" style="color:#cbd5e1;">0/0</span></div>
+                <div><span style="color: #f59e0b;">피로도</span> <span id="g-fatigue" style="color:#cbd5e1;">0/0</span></div>
+                <div><span style="color: #fcd34d;">골드</span> <span id="g-gold" style="color:#cbd5e1;">0</span><span style="color:#94a3b8;font-size:11px;">G</span></div>
+            </div>
+
+            <!-- 하단 컨텐츠 영역 -->
+            <main class="game-content">
+                <!-- 1. 마을 탭 컨텐츠 -->
+                <section id="town" class="view active">
+                    <h2>마을</h2>
+                    <div class="content-box">
+                        <p>평화로운 마을입니다. 휴식을 취하거나 상점을 이용할 수 있습니다.</p>
+                        <div class="action-buttons">
+                            <button class="action-btn" id="btn-inn">여관에서 휴식하기 (10G)</button>
+                            <button class="action-btn" id="btn-church" style="border-color: #10b981; color: #6ee7b7;">성당에서 가호받기 (피로도 +100)</button>
+                            <button class="action-btn" id="btn-shop">상점 방문하기</button>
+                            <button class="action-btn" id="btn-guild">길드 (직업 변경)</button>
+                            <button class="action-btn" id="btn-warehouse" style="border-color: #f59e0b; color: #fcd34d;">창고</button>
+                        </div>
+                        
+                        <!-- 창고 서브 메뉴 (기본 숨김) -->
+                        <div id="warehouse-menu" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                            <h3 style="color: #fcd34d; margin-bottom: 12px; font-size: 16px;">계정 창고</h3>
+                            <div style="display: flex; gap: 16px;">
+                                <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px;">
+                                    <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px;">내 인벤토리 (클릭 시 보관)</h4>
+                                    <div id="warehouse-inventory-list" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                                </div>
+                                <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px;">
+                                    <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px;">계정 창고 (클릭 시 꺼내기)</h4>
+                                    <div id="warehouse-storage-list" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 길드 서브 메뉴 (기본 숨김) -->
+                        <div id="guild-menu" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                            <p style="margin-bottom: 12px; font-size: 14px; color: #94a3b8;">전직할 직업을 선택하세요 (초보자 레벨 10 필요):</p>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="action-btn" id="btn-job-warrior" style="flex: 1; border-color: #ef4444; color: #fca5a5;">검사</button>
+                                <button class="action-btn" id="btn-job-mage" style="flex: 1; border-color: #3b82f6; color: #93c5fd;">마법사</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. 필드 탭 컨텐츠 -->
+                <section id="field" class="view" style="display: none;">
+                    <h2>필드</h2>
+                    
+                    <div id="field-idle" class="content-box">
+                        <p>탐험할 필드를 선택하세요.</p>
+                        
+                        <div id="field-list-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+                            <!-- 동적 필드 리스트 렌더링 -->
+                        </div>
+
+                        <div style="padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                            <span style="color: #cbd5e1; font-size: 14px; font-weight: 600;">자동 전투 모드</span>
+                            <select id="sel-auto-combat" style="background: #1e293b; color: #f8fafc; border: 1px solid #475569; padding: 6px 12px; border-radius: 6px; font-size: 13px; outline: none;">
+                                <option value="manual">수동 전투</option>
+                                <option value="once">1회 자동 전투</option>
+                                <option value="repeat">반복 자동 전투</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 필드 전투 상태 (기본 숨김) -->
+                    <div id="field-combat" class="content-box" style="display: none; border-color: #ef4444;">
+                        <h3 style="color: #ef4444; margin-bottom: 12px; text-align: center; font-size: 18px;">⚔️ 야생의 몬스터 출현! ⚔️</h3>
+                        
+                        <!-- 몬스터 및 플레이어 정보 표시 (게이지 바 형태) -->
+                        <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                            <!-- 플레이어 상태 -->
+                            <div style="flex: 1; padding: 12px; background: rgba(15, 23, 42, 0.8); border-radius: 8px; border: 1px solid #475569;">
+                                <div style="font-weight: 800; font-size: 14px; color: #3b82f6; margin-bottom: 8px;" id="combat-player-name">내 캐릭터</div>
+                                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+                                    <span style="color: #ef4444; font-weight: bold;">HP</span>
+                                    <span id="combat-player-hp-text" style="color: #cbd5e1;">0/0</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #334155; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+                                    <div id="combat-player-hp-bar" style="width: 100%; height: 100%; background: #ef4444; transition: width 0.3s;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+                                    <span style="color: #3b82f6; font-weight: bold;">MP</span>
+                                    <span id="combat-player-mp-text" style="color: #cbd5e1;">0/0</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
+                                    <div id="combat-player-mp-bar" style="width: 100%; height: 100%; background: #3b82f6; transition: width 0.3s;"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- 몬스터 상태 -->
+                            <div style="flex: 1; padding: 12px; background: rgba(15, 23, 42, 0.8); border-radius: 8px; border: 1px solid #ef4444;">
+                                <div style="font-weight: 800; font-size: 14px; color: #ef4444; margin-bottom: 8px;" id="monster-name-display">몬스터</div>
+                                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+                                    <span style="color: #ef4444; font-weight: bold;">HP</span>
+                                    <span id="combat-monster-hp-text" style="color: #cbd5e1;">0/0</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
+                                    <div id="combat-monster-hp-bar" style="width: 100%; height: 100%; background: #ef4444; transition: width 0.3s;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 전투 로그 영역 -->
+                        <div id="combat-log" style="background: rgba(0,0,0,0.6); padding: 12px; border-radius: 8px; height: 140px; overflow-y: auto; margin-bottom: 16px; font-size: 13px; color: #cbd5e1; display: flex; flex-direction: column; gap: 6px; border: 1px solid #334155;">
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="action-btn danger" id="btn-attack">공격하기 ⚔️</button>
+                            <button class="action-btn" id="btn-skill" style="border-color: #a855f7; color: #d8b4fe;">스킬 🪄</button>
+                            <button class="action-btn" id="btn-flee">도망치기 🏃</button>
+                            <button class="action-btn danger" id="btn-stop-auto" style="display: none; border-color: #ef4444; color: #fca5a5;">마을로 귀환 (자동 사냥 중단)</button>
+                        </div>
+                        
+                        <!-- 스킬 선택 영역 -->
+                        <div id="combat-skill-menu" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #334155;">
+                            <p style="margin-bottom: 8px; font-size: 13px; color: #94a3b8;">사용할 스킬을 선택하세요:</p>
+                            <div id="combat-skill-list" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. 정보 탭 컨텐츠 -->
+                <section id="info" class="view" style="display: none;">
+                    <h2>캐릭터 정보</h2>
+                    
+                    <div id="sub-view-stats" style="margin-bottom: 24px;">
+                        <div class="stats-container" id="player-stats">
+                            <!-- 동적 렌더링 -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. 인벤토리 탭 컨텐츠 -->
+                <section id="inventory" class="view" style="display: none;">
+                    <h2>장비 및 인벤토리</h2>
+                    
+                    <div id="equipment-container" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 24px;">
+                        <!-- 장착 장비 동적 렌더링 -->
+                    </div>
+                    
+                    <div id="sub-view-inventory">
+                        <div class="content-box" style="padding: 16px;">
+                            <h3 style="font-size: 14px; color: #10b981; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">소지품 (인벤토리)</h3>
+                            <div style="display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 6px;" id="inventory-filters">
+                                <button class="action-btn active filter-btn" data-filter="all" style="padding: 4px 8px; font-size: 12px; border-color: #3b82f6; color: #93c5fd;">전체</button>
+                                <button class="action-btn filter-btn" data-filter="equip" style="padding: 4px 8px; font-size: 12px;">장비</button>
+                                <button class="action-btn filter-btn" data-filter="consumable" style="padding: 4px 8px; font-size: 12px;">소모품</button>
+                                <button class="action-btn filter-btn" data-filter="material" style="padding: 4px 8px; font-size: 12px;">재료</button>
+                                <button class="action-btn filter-btn" data-filter="event" style="padding: 4px 8px; font-size: 12px;">이벤트</button>
+                            </div>
+                            <div id="inventory-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+                                <!-- 인벤토리 아이템 렌더링 -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Data DB -->
+    <script src="js/data/items.js"></script>
+    <script src="js/data/skills.js"></script>
+    <script src="js/data/jobs.js"></script>
+    <script src="js/data/monsters.js"></script>
+    <script src="js/data/fields.js"></script>
+    <script src="js/data/shops.js"></script>
+    <script src="js/data/exp.js"></script>
+    <script src="js/data/drops.js"></script>
+    
+    <!-- Core & Game Logic -->
+    <script src="js/core/db.js"></script>
+    <script src="js/core/models.js"></script>
+    <script src="js/game/state.js"></script>
+    <script src="js/game/engine.js"></script>
+    <script src="js/game/ui.js"></script>
+</body>
+</html>
