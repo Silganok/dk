@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dragon's Knight - Lobby</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/global.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- 로그인 뷰 -->
+        <section id="login-view" style="display: block; padding-top: 30px;">
+            <div style="text-align: center; margin: 0 24px 20px 24px;">
+                <img src="images/title.png" alt="Dragon's Knight" style="width: 100%; max-width: 400px; height: auto; display: block; margin: 0 auto; filter: drop-shadow(0 8px 12px rgba(0,0,0,0.6));">
+            </div>
+            <div class="content-box" style="text-align: center; padding: 32px 20px; margin: 0 24px;">
+                <h2 style="margin-bottom: 20px; color: #94a3b8; font-size: 16px;">계정 로그인 / 생성</h2>
+                <input type="text" id="login-account-id" placeholder="계정 아이디 (알파벳/숫자)" style="padding: 12px; width: 80%; margin-bottom: 16px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 4px; outline: none; text-align: center;">
+                <button class="action-btn" id="btn-login" style="width: 80%; padding: 12px; font-size: 16px; border-color: #3b82f6; color: #93c5fd;">접속하기</button>
+            </div>
+            
+            <!-- 백업 및 복구 영역 -->
+            <div style="text-align: center; margin: 24px 24px 0 24px; padding-top: 16px; border-top: 1px solid #334155;">
+                <p style="color: #64748b; font-size: 12px; margin-bottom: 12px;">로컬 데이터 백업 및 복구</p>
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                    <button class="action-btn" id="btn-backup" style="padding: 6px 12px; font-size: 12px; width: auto;">데이터 백업 (다운로드)</button>
+                    <button class="action-btn" id="btn-restore-trigger" style="padding: 6px 12px; font-size: 12px; width: auto; border-color: #f59e0b; color: #fcd34d;">데이터 복구 (불러오기)</button>
+                    <input type="file" id="input-restore-file" accept=".json" style="display: none;">
+                </div>
+            </div>
+        </section>
+
+        <!-- 캐릭터 선택 뷰 -->
+        <section id="char-select-view" style="display: none; padding-top: 20px; margin: 0 24px;">
+            <h1 style="text-align: center; margin-bottom: 24px; color: #f8fafc; font-size: 24px;">캐릭터 선택</h1>
+            <div id="char-slot-container" style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- js/auth/auth.js에서 동적으로 3개의 슬롯 렌더링 -->
+            </div>
+            <div style="text-align: center; margin-top: 24px;">
+                <button class="action-btn" id="btn-logout" style="border-color: #ef4444; color: #fca5a5;">로그아웃</button>
+            </div>
+        </section>
+
+        <!-- 캐릭터 생성 뷰 -->
+        <section id="char-create-view" style="display: none; padding-top: 20px; margin: 0 24px;">
+            <h1 style="text-align: center; margin-bottom: 24px; color: #f8fafc; font-size: 24px;">새 캐릭터 생성</h1>
+            <div class="content-box">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #94a3b8; font-size: 14px; margin-bottom: 8px;">캐릭터 이름</label>
+                    <input type="text" id="create-char-name" placeholder="중복 불가능" style="padding: 12px; width: 100%; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 4px; outline: none; box-sizing: border-box;">
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #94a3b8; font-size: 14px; margin-bottom: 8px;">성별</label>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="action-btn active" id="btn-gender-male" style="flex: 1; border-color: #3b82f6; color: #93c5fd;">남성</button>
+                        <button class="action-btn" id="btn-gender-female" style="flex: 1;">여성</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; color: #94a3b8; font-size: 14px; margin-bottom: 8px;">생김새 타입</label>
+                    <div style="text-align: center; margin-bottom: 16px;">
+                        <img id="appearance-preview" src="images/presets/m_01.png" alt="캐릭터 외형" style="width: 120px; height: 120px; border-radius: 50%; border: 3px solid #3b82f6; box-shadow: 0 4px 10px rgba(0,0,0,0.5); object-fit: cover; transition: all 0.3s ease; display: inline-block;">
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px;">
+                        <button id="btn-appearance-prev" style="background: transparent; border: none; color: #f8fafc; font-size: 20px; cursor: pointer;">◀</button>
+                        <div id="appearance-display" style="color: #f8fafc; font-size: 16px; font-weight: 600;">타입 1</div>
+                        <button id="btn-appearance-next" style="background: transparent; border: none; color: #f8fafc; font-size: 20px; cursor: pointer;">▶</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button class="action-btn" id="btn-create-submit" style="flex: 2; border-color: #10b981; color: #6ee7b7;">생성 완료</button>
+                    <button class="action-btn" id="btn-create-cancel" style="flex: 1; border-color: #64748b; color: #cbd5e1;">취소</button>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <!-- Data DB -->
+    <script src="js/data/items.js"></script>
+    <script src="js/data/jobs.js"></script>
+    <script src="js/data/skills.js"></script>
+    
+    <!-- Core & Auth Logic -->
+    <script src="js/core/db.js"></script>
+    <script src="js/core/models.js"></script>
+    <script src="js/auth/auth.js"></script>
+</body>
+</html>
