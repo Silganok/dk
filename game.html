@@ -42,37 +42,149 @@
                 <!-- 1. 마을 탭 컨텐츠 -->
                 <section id="town" class="view active">
                     <h2>마을</h2>
-                    <div class="content-box">
-                        <p>평화로운 마을입니다. 휴식을 취하거나 상점을 이용할 수 있습니다.</p>
-                        <div class="action-buttons">
-                            <button class="action-btn" id="btn-inn">여관에서 휴식하기 (10G)</button>
-                            <button class="action-btn" id="btn-church" style="border-color: #10b981; color: #6ee7b7;">성당에서 가호받기 (피로도 +100)</button>
-                            <button class="action-btn" id="btn-shop">상점 방문하기</button>
-                            <button class="action-btn" id="btn-guild">길드 (직업 변경)</button>
-                            <button class="action-btn" id="btn-warehouse" style="border-color: #f59e0b; color: #fcd34d;">창고</button>
+                    <div id="town-main" class="content-box">
+                        <p style="margin-bottom: 16px;">평화로운 마을 광장입니다. 진입할 장소를 선택하세요.</p>
+                        <div class="town-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                            <button class="action-btn town-nav-btn" data-target="town-inn" style="height: 60px; font-size: 14px; border-color: #3b82f6; color: #93c5fd;">🏨 여관</button>
+                            <button class="action-btn town-nav-btn" data-target="town-church" style="height: 60px; font-size: 14px; border-color: #10b981; color: #6ee7b7;">⛪ 성당</button>
+                            <button class="action-btn town-nav-btn" data-target="town-shop" style="height: 60px; font-size: 14px; border-color: #a855f7; color: #d8b4fe;">💰 상점</button>
+                            <button class="action-btn town-nav-btn" data-target="town-guild" style="height: 60px; font-size: 14px;">🛡️ 길드</button>
+                            <button class="action-btn town-nav-btn" data-target="town-warehouse" style="height: 60px; font-size: 14px; border-color: #f59e0b; color: #fcd34d;">📦 창고</button>
+                            <button class="action-btn" style="height: 60px; font-size: 14px; opacity: 0.5; cursor: not-allowed;" disabled>🔒 준비 중</button>
                         </div>
-                        
-                        <!-- 창고 서브 메뉴 (기본 숨김) -->
-                        <div id="warehouse-menu" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-                            <h3 style="color: #fcd34d; margin-bottom: 12px; font-size: 16px;">계정 창고</h3>
-                            <div style="display: flex; gap: 16px;">
-                                <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px;">
-                                    <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px;">내 인벤토리 (클릭 시 보관)</h4>
-                                    <div id="warehouse-inventory-list" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                    </div>
+
+                    <!-- 건물 내부 뷰 -->
+                    <div id="town-subviews" style="position: relative;">
+                        <!-- 공통: 광장으로 돌아가기 버튼 -->
+                        <div id="btn-back-to-town" style="display: none; text-align: right; margin-bottom: 12px;">
+                            <button class="action-btn" style="padding: 6px 12px; font-size: 12px; width: auto; border-color: #64748b; color: #cbd5e1;">◀ 광장으로 돌아가기</button>
+                        </div>
+
+                        <!-- 🏨 여관 뷰 -->
+                        <div id="town-inn" class="town-subview content-box" style="display: none; border-color: #3b82f6;">
+                            <h3 style="color: #3b82f6; margin-bottom: 16px; font-size: 18px; text-align: center;">🏨 달빛 여관</h3>
+                            <p style="margin-bottom: 16px; font-size: 13px; color: #cbd5e1; text-align: center;">편안한 휴식을 취하거나 맛있는 요리로 기운을 차리세요.</p>
+                            
+                            <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border: 1px solid #334155; border-radius: 6px; margin-bottom: 16px;">
+                                <h4 style="color: #93c5fd; margin-bottom: 8px; font-size: 14px;">🛏️ 휴식하기</h4>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 12px; color: #94a3b8;">체력(HP)과 마력(MP)을 100% 회복합니다.</span>
+                                    <button class="action-btn" id="btn-inn-rest" style="padding: 6px 12px; font-size: 12px; width: auto; border-color: #3b82f6; color: #93c5fd;">휴식 (0G)</button>
                                 </div>
-                                <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px;">
-                                    <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px;">계정 창고 (클릭 시 꺼내기)</h4>
-                                    <div id="warehouse-storage-list" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                            </div>
+
+                            <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border: 1px solid #334155; border-radius: 6px;">
+                                <h4 style="color: #f59e0b; margin-bottom: 8px; font-size: 14px;">🍲 식사하기 (식사 버프)</h4>
+                                <p style="font-size: 11px; color: #94a3b8; margin-bottom: 12px;">든든한 요리를 먹고 10번의 전투 동안 버프를 받습니다.</p>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #334155; padding-top: 8px;">
+                                        <div>
+                                            <div style="color: #f8fafc; font-size: 13px; font-weight: bold;">🍖 든든한 멧돼지 바비큐</div>
+                                            <div style="color: #94a3b8; font-size: 11px;">10회 전투 동안 물리/마법 공격력 10% 증가</div>
+                                        </div>
+                                        <button class="action-btn btn-inn-meal" data-meal="bbq" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #ef4444; color: #fca5a5;">먹기 (100G)</button>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #334155; padding-top: 8px;">
+                                        <div>
+                                            <div style="color: #f8fafc; font-size: 13px; font-weight: bold;">🥗 상큼한 허브 샐러드</div>
+                                            <div style="color: #94a3b8; font-size: 11px;">10회 전투 동안 명중률/회피율 10 증가</div>
+                                        </div>
+                                        <button class="action-btn btn-inn-meal" data-meal="salad" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #10b981; color: #6ee7b7;">먹기 (80G)</button>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #334155; padding-top: 8px;">
+                                        <div>
+                                            <div style="color: #f8fafc; font-size: 13px; font-weight: bold;">🍲 특제 해산물 스튜</div>
+                                            <div style="color: #94a3b8; font-size: 11px;">10회 전투 동안 획득 경험치 15% 증가</div>
+                                        </div>
+                                        <button class="action-btn btn-inn-meal" data-meal="stew" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #3b82f6; color: #93c5fd;">먹기 (150G)</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- 길드 서브 메뉴 (기본 숨김) -->
-                        <div id="guild-menu" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
-                            <p style="margin-bottom: 12px; font-size: 14px; color: #94a3b8;">전직할 직업을 선택하세요 (초보자 레벨 10 필요):</p>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="action-btn" id="btn-job-warrior" style="flex: 1; border-color: #ef4444; color: #fca5a5;">검사</button>
-                                <button class="action-btn" id="btn-job-mage" style="flex: 1; border-color: #3b82f6; color: #93c5fd;">마법사</button>
+
+                        <!-- ⛪ 성당 뷰 -->
+                        <div id="town-church" class="town-subview content-box" style="display: none; border-color: #10b981;">
+                            <h3 style="color: #10b981; margin-bottom: 16px; font-size: 18px; text-align: center;">⛪ 프론테라 대성당</h3>
+                            <p style="margin-bottom: 16px; font-size: 13px; color: #cbd5e1; text-align: center;">헌금을 내고 여신의 가호를 받아 피로도를 회복하세요.</p>
+                            
+                            <div style="text-align: center; background: rgba(15, 23, 42, 0.6); padding: 20px; border: 1px solid #334155; border-radius: 6px;">
+                                <div style="font-size: 40px; margin-bottom: 12px;">✨</div>
+                                <h4 style="color: #6ee7b7; margin-bottom: 8px; font-size: 15px;">여신의 가호 (피로도 +100)</h4>
+                                <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">회복 비용은 현재 레벨에 비례하여 증가합니다.</p>
+                                <button class="action-btn" id="btn-church-heal" style="font-size: 14px; border-color: #10b981; color: #6ee7b7; width: 80%;">가호 받기 (0G)</button>
+                            </div>
+                        </div>
+
+                        <!-- 💰 상점 뷰 -->
+                        <div id="town-shop" class="town-subview content-box" style="display: none; border-color: #a855f7;">
+                            <h3 style="color: #a855f7; margin-bottom: 16px; font-size: 18px; text-align: center;">💰 만물상</h3>
+                            
+                            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                                <button class="action-btn active shop-tab-btn" data-target="shop-buy" style="flex: 1; border-color: #a855f7; color: #d8b4fe;">구매하기</button>
+                                <button class="action-btn shop-tab-btn" data-target="shop-sell" style="flex: 1;">판매하기</button>
+                            </div>
+
+                            <div id="shop-buy" class="shop-tab-content">
+                                <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">* 구매한 물약은 전투 중 조건에 맞으면 자동으로 소모됩니다.</p>
+                                <div id="shop-buy-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                    <!-- ui.js에서 동적 생성 (또는 정적 마크업) -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 8px; border-radius: 4px;">
+                                        <div>
+                                            <div style="font-weight: 600; font-size: 13px; color: #ef4444;">초보자 체력 포션</div>
+                                            <div style="font-size: 11px; color: #94a3b8;">HP 50 회복</div>
+                                        </div>
+                                        <button class="action-btn btn-buy-item" data-item="초보자 체력 포션" data-price="20" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #ef4444; color: #fca5a5;">구매 (20G)</button>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 8px; border-radius: 4px;">
+                                        <div>
+                                            <div style="font-weight: 600; font-size: 13px; color: #3b82f6;">초보자 마나 포션</div>
+                                            <div style="font-size: 11px; color: #94a3b8;">MP 30 회복</div>
+                                        </div>
+                                        <button class="action-btn btn-buy-item" data-item="초보자 마나 포션" data-price="30" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #3b82f6; color: #93c5fd;">구매 (30G)</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="shop-sell" class="shop-tab-content" style="display: none;">
+                                <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">* 장착 중인 장비를 제외한 인벤토리 아이템을 원가의 50%에 판매합니다.</p>
+                                <div id="shop-sell-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;">
+                                    <!-- ui.js에서 동적 생성 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 🛡️ 길드 뷰 -->
+                        <div id="town-guild" class="town-subview content-box" style="display: none;">
+                            <h3 style="color: #f8fafc; margin-bottom: 16px; font-size: 18px; text-align: center;">🛡️ 모험가 길드</h3>
+                            <div id="guild-menu">
+                                <p style="margin-bottom: 12px; font-size: 14px; color: #94a3b8;">전직할 직업을 선택하세요 (초보자 레벨 10 필요):</p>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="action-btn" id="btn-job-warrior" style="flex: 1; border-color: #ef4444; color: #fca5a5;">검사</button>
+                                    <button class="action-btn" id="btn-job-mage" style="flex: 1; border-color: #3b82f6; color: #93c5fd;">마법사</button>
+                                    <button class="action-btn" id="btn-job-archer" style="flex: 1; border-color: #10b981; color: #6ee7b7;">궁수</button>
+                                </div>
+                                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #334155;">
+                                    <p style="margin-bottom: 12px; font-size: 14px; color: #94a3b8;">기타 서비스:</p>
+                                    <button class="action-btn" id="btn-stat-reset" style="width: 100%; border-color: #f59e0b; color: #fcd34d;">스탯 초기화 (무료)</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 📦 창고 뷰 -->
+                        <div id="town-warehouse" class="town-subview content-box" style="display: none; border-color: #f59e0b;">
+                            <h3 style="color: #f59e0b; margin-bottom: 16px; font-size: 18px; text-align: center;">📦 계정 창고</h3>
+                            <div id="warehouse-menu">
+                                <div style="display: flex; gap: 16px;">
+                                    <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px;">
+                                        <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px;">내 인벤토리 (클릭 시 보관)</h4>
+                                        <div id="warehouse-inventory-list" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                                    </div>
+                                    <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px;">
+                                        <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px;">계정 창고 (클릭 시 꺼내기)</h4>
+                                        <div id="warehouse-storage-list" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -96,6 +208,20 @@
                                 <option value="once">1회 자동 전투</option>
                                 <option value="repeat">반복 자동 전투</option>
                             </select>
+                        </div>
+
+                        <div style="padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                            <span style="color: #cbd5e1; font-size: 14px; font-weight: 600;">자동 물약 사용</span>
+                            <div style="display: flex; gap: 8px; font-size: 12px; color: #94a3b8; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #ef4444;">HP ≤</span>
+                                    <input type="number" id="auto-potion-hp" value="30" min="0" max="100" style="width: 46px; background: #1e293b; color: #f8fafc; border: 1px solid #475569; padding: 4px; border-radius: 4px; font-size: 12px; outline: none; text-align: center;">%
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="color: #3b82f6;">MP ≤</span>
+                                    <input type="number" id="auto-potion-mp" value="20" min="0" max="100" style="width: 46px; background: #1e293b; color: #f8fafc; border: 1px solid #475569; padding: 4px; border-radius: 4px; font-size: 12px; outline: none; text-align: center;">%
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -184,6 +310,7 @@
                                 <button class="action-btn filter-btn" data-filter="equip" style="padding: 4px 8px; font-size: 12px;">장비</button>
                                 <button class="action-btn filter-btn" data-filter="consumable" style="padding: 4px 8px; font-size: 12px;">소모품</button>
                                 <button class="action-btn filter-btn" data-filter="material" style="padding: 4px 8px; font-size: 12px;">재료</button>
+                                <button class="action-btn filter-btn" data-filter="etc" style="padding: 4px 8px; font-size: 12px;">기타</button>
                                 <button class="action-btn filter-btn" data-filter="event" style="padding: 4px 8px; font-size: 12px;">이벤트</button>
                             </div>
                             <div id="inventory-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">

@@ -1,6 +1,6 @@
 // DOM 요소를 전역적으로 캐싱
 let tabBtns, views, statsContainer;
-let btnInn, btnChurch, btnShop, btnGuild, btnWarrior, btnMage, guildMenu;
+let btnInn, btnChurch, btnShop, btnGuild, btnWarrior, btnMage, btnArcher, btnStatReset, guildMenu;
 let fieldIdle, fieldCombat, monsterNameDisplay, monsterHpDisplay, combatLog;
 let btnExplore, btnAttack, btnSkill, btnFlee, btnStopAuto, combatSkillMenu, combatSkillList;
 let btnWarehouse, warehouseMenu, warehouseInvList, warehouseStorageList;
@@ -18,14 +18,10 @@ function initGameUI() {
     equipmentContainer = document.getElementById('equipment-container');
 
     // 마을 UI
-    btnInn = document.getElementById('btn-inn');
-    btnChurch = document.getElementById('btn-church');
-    btnShop = document.getElementById('btn-shop');
-    btnGuild = document.getElementById('btn-guild');
-    guildMenu = document.getElementById('guild-menu');
     btnWarrior = document.getElementById('btn-job-warrior');
     btnMage = document.getElementById('btn-job-mage');
-    btnWarehouse = document.getElementById('btn-warehouse');
+    btnArcher = document.getElementById('btn-job-archer');
+    btnStatReset = document.getElementById('btn-stat-reset');
     warehouseMenu = document.getElementById('warehouse-menu');
     warehouseInvList = document.getElementById('warehouse-inventory-list');
     warehouseStorageList = document.getElementById('warehouse-storage-list');
@@ -66,54 +62,155 @@ function initGameUI() {
         btn.addEventListener('click', () => switchTab(btn.dataset.target));
     });
 
-    if (btnInn) {
-        btnInn.addEventListener('click', () => {
-            if (playerState.gold >= 10) {
+    // --- 마을 내비게이션 로직 ---
+    const townNavBtns = document.querySelectorAll('.town-nav-btn');
+    const townMain = document.getElementById('town-main');
+    const townSubviews = document.querySelectorAll('.town-subview');
+    const btnBackToTown = document.getElementById('btn-back-to-town');
+
+    townNavBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.dataset.target;
+            townMain.style.display = 'none';
+            townSubviews.forEach(view => view.style.display = 'none');
+            document.getElementById(targetId).style.display = 'block';
+            btnBackToTown.style.display = 'block';
+            
+            if (targetId === 'town-warehouse') renderWarehouse();
+            if (targetId === 'town-shop') renderShopSellList();
+        });
+    });
+
+    if (btnBackToTown) {
+        btnBackToTown.addEventListener('click', () => {
+            townSubviews.forEach(view => view.style.display = 'none');
+            btnBackToTown.style.display = 'none';
+            townMain.style.display = 'block';
+        });
+    }
+
+    // --- 여관 기능 ---
+    const btnInnRest = document.getElementById('btn-inn-rest');
+    if (btnInnRest) {
+        // 비용: 레벨 * 5
+        btnInnRest.textContent = `휴식 (${(playerState.level || 1) * 5}G)`;
+        btnInnRest.addEventListener('click', () => {
+            const cost = (playerState.level || 1) * 5;
+            if (playerState.gold >= cost) {
                 if (playerState.currentHp === playerState.maxHp && playerState.currentMp === playerState.maxMp) {
                     alert("이미 체력과 마력이 가득 찼습니다.");
                     return;
                 }
                 updatePlayerState({
-                    gold: playerState.gold - 10,
+                    gold: playerState.gold - cost,
                     currentHp: playerState.maxHp,
                     currentMp: playerState.maxMp
                 });
-                alert("10G를 지불하고 체력과 마력을 모두 회복했습니다.");
+                alert(`${cost}G를 지불하고 체력과 마력을 모두 회복했습니다.`);
             } else {
                 alert("골드가 부족합니다.");
             }
         });
     }
 
-    if (btnChurch) {
-        btnChurch.addEventListener('click', () => {
-            updatePlayerState({ fatigue: playerState.fatigue + 100 });
-            alert("여신의 가호를 받아 피로도가 100 증가했습니다!");
+    const btnInnMeals = document.querySelectorAll('.btn-inn-meal');
+    btnInnMeals.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const mealType = btn.dataset.meal;
+            let cost = 0;
+            let buffDesc = "";
+            let buffData = null;
+
+            if (mealType === 'bbq') {
+                cost = 100; buffDesc = "물리/마법 공격력 10% 증가"; buffData = { type: 'bbq', stat: 'atk', amount: 0.1 };
+            } else if (mealType === 'salad') {
+                cost = 80; buffDesc = "명중률/회피율 10 증가"; buffData = { type: 'salad', stat: 'acc_eva', amount: 10 };
+            } else if (mealType === 'stew') {
+                cost = 150; buffDesc = "획득 경험치 15% 증가"; buffData = { type: 'stew', stat: 'exp', amount: 0.15 };
+            }
+
+            if (playerState.gold >= cost) {
+                updatePlayerState({
+                    gold: playerState.gold - cost,
+                    mealBuff: { ...buffData, count: 10 }
+                });
+                alert(`식사를 마쳤습니다! 10번의 전투 동안 [${buffDesc}] 효과가 적용됩니다.`);
+            } else {
+                alert("골드가 부족합니다.");
+            }
+        });
+    });
+
+    // --- 성당 기능 ---
+    const btnChurchHeal = document.getElementById('btn-church-heal');
+    if (btnChurchHeal) {
+        // 비용: 레벨 * 20
+        btnChurchHeal.textContent = `가호 받기 (${(playerState.level || 1) * 20}G)`;
+        btnChurchHeal.addEventListener('click', () => {
+            const cost = (playerState.level || 1) * 20;
+            if (playerState.gold >= cost) {
+                updatePlayerState({
+                    gold: playerState.gold - cost,
+                    fatigue: playerState.fatigue + 100
+                });
+                alert(`여신의 가호를 받아 피로도가 100 증가했습니다! (${cost}G 소모)`);
+            } else {
+                alert("골드가 부족합니다.");
+            }
         });
     }
 
-    if (btnGuild) {
-        btnGuild.addEventListener('click', () => {
-            if (playerState.job !== "초보자") {
-                alert("이미 전직하셨습니다!");
-                return;
-            }
-            if (playerState.level < 10) {
-                alert(`레벨 10 이상부터 전직할 수 있습니다. (현재 레벨: ${playerState.level})`);
-                return;
-            }
-            guildMenu.style.display = guildMenu.style.display === 'none' ? 'block' : 'none';
-        });
-    }
+    // --- 상점 기능 ---
+    const shopTabBtns = document.querySelectorAll('.shop-tab-btn');
+    const shopTabContents = document.querySelectorAll('.shop-tab-content');
+    shopTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            shopTabBtns.forEach(b => {
+                b.classList.remove('active');
+                b.style.borderColor = '#475569';
+                b.style.color = '#cbd5e1';
+            });
+            btn.classList.add('active');
+            btn.style.borderColor = '#a855f7';
+            btn.style.color = '#d8b4fe';
 
-    if (btnWarehouse) {
-        btnWarehouse.addEventListener('click', () => {
-            warehouseMenu.style.display = warehouseMenu.style.display === 'none' ? 'block' : 'none';
-            if (warehouseMenu.style.display === 'block') {
-                renderWarehouse();
+            shopTabContents.forEach(c => c.style.display = 'none');
+            document.getElementById(btn.dataset.target).style.display = 'block';
+            
+            if (btn.dataset.target === 'shop-sell') {
+                renderShopSellList();
             }
         });
-    }
+    });
+
+    const btnBuyItems = document.querySelectorAll('.btn-buy-item');
+    btnBuyItems.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const itemName = btn.dataset.item;
+            const price = parseInt(btn.dataset.price);
+            
+            if (playerState.gold >= price) {
+                let itemObj = {
+                    name: itemName,
+                    type: "consumable",
+                    desc: itemName === "초보자 체력 포션" ? "체력을 50 회복시켜 주는 초보자용 물약" : "마나를 30 회복시켜 주는 초보자용 물약"
+                };
+                if (itemName === "초보자 체력 포션") itemObj.healHp = 50;
+                if (itemName === "초보자 마나 포션") itemObj.healMp = 30;
+                
+                const newInv = [...playerState.inventory];
+                newInv.push(itemObj);
+                
+                updatePlayerState({
+                    gold: playerState.gold - price,
+                    inventory: newInv
+                });
+                alert(`${itemName}을(를) 구매했습니다!`);
+            } else {
+                alert("골드가 부족합니다.");
+            }
+        });
+    });
 
     if (inventoryFilters) {
         inventoryFilters.forEach(btn => {
@@ -135,34 +232,45 @@ function initGameUI() {
     if (btnWarrior) {
         btnWarrior.addEventListener('click', () => {
             const jobData = JOB_DB["검사"];
-            for (let stat in jobData.bonusStats) {
-                playerState.baseStats[stat] += jobData.bonusStats[stat];
-            }
-            playerState.skills = [];
+            playerState.skills = {};
             playerState.equippedSkills = [];
-            jobData.bonusSkills.forEach(skillName => {
-                playerState.skills.push(JSON.parse(JSON.stringify(SKILL_DB[skillName])));
-            });
-            updatePlayerState({ job: "검사", skills: playerState.skills, equippedSkills: playerState.equippedSkills });
+            updatePlayerState({ job: "검사", jobLevel: 1, jobExp: 0, skills: playerState.skills, equippedSkills: playerState.equippedSkills });
             guildMenu.style.display = 'none';
-            alert(`전사로 전직했습니다! ${jobData.desc}`);
+            alert(`검사로 전직했습니다! ${jobData.desc}`);
         });
     }
 
     if (btnMage) {
         btnMage.addEventListener('click', () => {
             const jobData = JOB_DB["마법사"];
-            for (let stat in jobData.bonusStats) {
-                playerState.baseStats[stat] += jobData.bonusStats[stat];
-            }
-            playerState.skills = [];
+            playerState.skills = {};
             playerState.equippedSkills = [];
-            jobData.bonusSkills.forEach(skillName => {
-                playerState.skills.push(JSON.parse(JSON.stringify(SKILL_DB[skillName])));
-            });
-            updatePlayerState({ job: "마법사", skills: playerState.skills, equippedSkills: playerState.equippedSkills });
+            updatePlayerState({ job: "마법사", jobLevel: 1, jobExp: 0, skills: playerState.skills, equippedSkills: playerState.equippedSkills });
             guildMenu.style.display = 'none';
             alert(`마법사로 전직했습니다! ${jobData.desc}`);
+        });
+    }
+
+    if (btnArcher) {
+        btnArcher.addEventListener('click', () => {
+            const jobData = JOB_DB["궁수"];
+            playerState.skills = {};
+            playerState.equippedSkills = [];
+            updatePlayerState({ job: "궁수", jobLevel: 1, jobExp: 0, skills: playerState.skills, equippedSkills: playerState.equippedSkills });
+            guildMenu.style.display = 'none';
+            alert(`궁수로 전직했습니다! ${jobData.desc}`);
+        });
+    }
+
+    if (btnStatReset) {
+        btnStatReset.addEventListener('click', () => {
+            if (confirm("정말로 스탯을 모두 초기화하시겠습니까? 포인트가 전부 반환됩니다.")) {
+                playerState.baseStats = { str: 1, agi: 1, dex: 1, vit: 1, int: 1, luk: 1 };
+                playerState.statPoints = EXP_DB.getAccumulatedStatPoints(playerState.level);
+                updatePlayerState({ baseStats: playerState.baseStats, statPoints: playerState.statPoints });
+                alert("스탯이 모두 초기화되었습니다!");
+                if (typeof renderPlayerStats === 'function') renderPlayerStats();
+            }
         });
     }
 
@@ -230,6 +338,11 @@ function initGameUI() {
 }
 
 function switchTab(targetId) {
+    if (targetId !== 'field' && typeof currentMonster !== 'undefined' && currentMonster) {
+        window.isAutoCombatActive = false;
+        window.autoCombatMode = 'manual';
+        if (typeof endCombat === 'function') endCombat();
+    }
     tabBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.target === targetId));
     views.forEach(view => view.style.display = view.id === targetId ? 'block' : 'none');
     if (targetId === 'info') {
@@ -280,13 +393,13 @@ window.renderFieldList = function() {
         const nameColor = field.requireItem ? '#ef4444' : '#3b82f6';
 
         div.innerHTML = `
-            <div>
+            <div style="flex: 1; padding-right: 12px;">
                 <div style="font-weight: bold; font-size: 15px; color: ${nameColor}; margin-bottom: 4px;">${field.name}</div>
-                <div style="font-size: 12px; color: #94a3b8;">${field.desc}</div>
+                <div style="font-size: 12px; color: #94a3b8; line-height: 1.4;">${field.desc}</div>
                 <div style="font-size: 11px; color: #64748b; margin-top: 4px;">권장 레벨: ${field.reqLevel || 1}</div>
             </div>
-            <div>
-                <button class="action-btn ${btnDisabled ? '' : 'danger'}" style="padding: 8px 16px; font-size: 13px; width: auto; ${btnDisabled ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${btnDisabled ? 'disabled' : ''}>${btnText}</button>
+            <div style="flex-shrink: 0;">
+                <button class="action-btn ${btnDisabled ? '' : 'danger'}" style="padding: 8px 16px; font-size: 13px; width: auto; white-space: nowrap; ${btnDisabled ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${btnDisabled ? 'disabled' : ''}>${btnText}</button>
             </div>
         `;
 
@@ -438,21 +551,32 @@ function endCombat() {
     if (typeof renderFieldList === 'function') renderFieldList();
 }
 
-function getEquipTooltip(item) {
+function getItemTooltipText(item) {
     if (!item) return '';
     let stats = [];
     if (item.attack) stats.push(`공격력 +${item.attack}`);
+    if (item.magicAttack) stats.push(`마법 공격력 +${item.magicAttack}`);
+    if (item.rangedAttack) stats.push(`원거리 공격력 +${item.rangedAttack}`);
     if (item.defense) stats.push(`방어력 +${item.defense}`);
     if (item.speed) stats.push(`속도 +${item.speed}`);
-    if (item.hp) stats.push(`HP +${item.hp}`);
-    if (item.mp) stats.push(`MP +${item.mp}`);
+    if (item.hp || item.maxHp) stats.push(`HP +${item.hp || item.maxHp}`);
+    if (item.mp || item.maxMp) stats.push(`MP +${item.mp || item.maxMp}`);
     if (item.str) stats.push(`STR +${item.str}`);
     if (item.agi) stats.push(`AGI +${item.agi}`);
     if (item.dex) stats.push(`DEX +${item.dex}`);
     if (item.vit) stats.push(`VIT +${item.vit}`);
     if (item.int) stats.push(`INT +${item.int}`);
     if (item.luk) stats.push(`LUK +${item.luk}`);
-    return `<div class="equip-tooltip"><strong>${item.name}</strong>\n${stats.join('\n')}</div>`;
+    if (item.healHp) stats.push(`HP 회복: ${item.healHp}`);
+    if (item.healMp) stats.push(`MP 회복: ${item.healMp}`);
+    
+    let text = `${item.name}\n${item.desc}`;
+    if (stats.length > 0) {
+        text += `\n\n[상세 정보]\n` + stats.join('\n');
+    }
+    
+    // 이스케이프 처리 (큰따옴표)
+    return text.replace(/"/g, '&quot;');
 }
 
 window.renderPlayerStats = function() {
@@ -460,18 +584,24 @@ window.renderPlayerStats = function() {
     updateGlobalBar();
     if (!playerState.equippedSkills) playerState.equippedSkills = []; // 호환성
     
-    const expPercent = playerState.level >= 10 && playerState.job === "초보자" ? 100 : Math.min(100, (playerState.exp / (playerState.level * 100)) * 100);
+    const baseReq = EXP_DB.getRequiredExp(playerState.level);
+    const baseExpPercent = playerState.level >= 100 ? 100 : Math.min(100, (playerState.exp / baseReq) * 100);
+    
+    const jobData = JOB_DB[playerState.job];
+    const maxJobLevel = jobData ? jobData.maxLevel : 10;
+    const jobReq = EXP_DB.getRequiredJobExp(playerState.jobLevel);
+    const jobExpPercent = playerState.jobLevel >= maxJobLevel ? 100 : Math.min(100, ((playerState.jobExp || 0) / jobReq) * 100);
+    
     const slotNames = { weapon: '무기', subWeapon: '보조', head: '투구', body: '갑옷', pants: '바지', shoes: '신발', accessory1: '장신구1', accessory2: '장신구2' };
     
     let equipHtml = '';
     for (const slot in slotNames) {
         const item = playerState.equipment[slot];
         equipHtml += `
-            <div class="equip-slot" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid #334155;">
+            <div class="equip-slot" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid #334155;" title="${item ? getItemTooltipText(item) : ''}">
                 <div style="flex: 1; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px;">
                     <span style="font-size: 12px; color: #94a3b8; display: inline-block; width: 45px;">${slotNames[slot]}</span>
                     <span style="color: ${item ? '#f8fafc' : '#475569'}; font-weight: ${item ? '600' : 'normal'}; font-size: 13px;">${item ? item.name : '없음'}</span>
-                    ${item ? getEquipTooltip(item) : ''}
                 </div>
                 ${item ? `<button class="action-btn danger" style="padding: 2px 6px; font-size: 11px; width: auto; margin: 0; min-width: 32px;" onclick="unequipItem('${slot}')">해제</button>` : ''}
             </div>
@@ -487,6 +617,51 @@ window.renderPlayerStats = function() {
         `;
     }
 
+    const getStatHtml = (statKey, statLabel) => {
+        const total = playerState.getTotalStat(statKey);
+        const base = playerState.baseStats[statKey];
+        const jobBonus = playerState.getJobBonus(statKey);
+        const equipBonus = playerState.getEquipBonus(statKey);
+        const cost = EXP_DB.getStatUpgradeCost(base);
+        const canUpgrade = base < 100 && (playerState.statPoints || 0) >= cost;
+        
+        let btnHtml = '';
+        if (base < 100) {
+            btnHtml = `<button class="action-btn stat-up-btn" data-stat="${statKey}" style="width: 100%; padding: 6px; font-size: 11px; margin: 0; ${canUpgrade ? 'border-color: #10b981; color: #6ee7b7;' : 'opacity: 0.3; cursor: not-allowed;'}" ${canUpgrade ? '' : 'disabled'}>+ 1 UP (비용: ${cost})</button>`;
+        } else {
+            btnHtml = `<button class="action-btn" style="width: 100%; padding: 6px; font-size: 11px; margin: 0; opacity: 0.5; border-color: #ef4444; color: #ef4444;" disabled>(MAX)</button>`;
+        }
+        
+        let details = `순수 ${base}`;
+        if (jobBonus > 0) details += ` <span style="color: #3b82f6;">+${jobBonus}(직업)</span>`;
+        if (equipBonus > 0) details += ` <span style="color: #10b981;">+${equipBonus}(장비)</span>`;
+
+        return `<div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                <span style="font-weight: bold; color: #f8fafc; font-size: 14px;">${statLabel}</span>
+                <span style="font-weight: bold; color: #f59e0b; font-size: 15px;">총합 ${total}</span>
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">
+                ${details}
+            </div>
+            ${btnHtml}
+        </div>`;
+    };
+
+    let statBoxesHtml = `
+        <div class="stat-section" style="grid-column: span 3; margin-top: 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: baseline;">
+            <h3 style="font-size: 14px; color: #f59e0b; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 0; width: 100%;">기본 스탯 <span style="font-size: 12px; color: #94a3b8; float: right;">잔여 포인트: <span style="color: #10b981; font-weight: bold;">${playerState.statPoints || 0}</span></span></h3>
+        </div>
+        <div style="grid-column: span 3; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%;">
+            ${getStatHtml('str', 'STR')}
+            ${getStatHtml('agi', 'AGI')}
+            ${getStatHtml('dex', 'DEX')}
+            ${getStatHtml('vit', 'VIT')}
+            ${getStatHtml('int', 'INT')}
+            ${getStatHtml('luk', 'LUK')}
+        </div>
+    `;
+
     statsContainer.innerHTML = `
         <div style="grid-column: span 3; display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 16px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border: 1px solid #334155;">
             <img src="${getAppearanceImageURL(playerState.gender || '남성', playerState.appearance || 1)}" alt="Portrait" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid ${playerState.gender === '여성' ? '#ec4899' : '#3b82f6'}; box-shadow: 0 4px 6px rgba(0,0,0,0.3); object-fit: cover;">
@@ -501,11 +676,20 @@ window.renderPlayerStats = function() {
         <div class="stat-box"><span class="stat-label">이름</span><span class="stat-value">${playerState.name}</span></div>
         <div class="stat-box"><span class="stat-label">성별</span><span class="stat-value">${playerState.gender || '남성'} (외형${playerState.appearance || 1})</span></div>
         <div class="stat-box"><span class="stat-label">직업</span><span class="stat-value">${playerState.job}</span></div>
-        <div class="stat-box" style="grid-column: span 3;">
-            <span class="stat-label">경험치 (EXP)</span>
-            <span class="stat-value exp">Lv.${playerState.level} (${playerState.exp}/${playerState.level * 100})</span>
+        <div class="stat-box" style="grid-column: span 3; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="stat-label">베이스 경험치</span>
+                <span class="stat-value exp">Lv.${playerState.level} (${playerState.exp}/${baseReq})</span>
+            </div>
+            <div style="width: 100%; background: #334155; height: 6px; border-radius: 4px; margin-top: 8px; margin-bottom: 8px; overflow: hidden;">
+                <div style="width: ${baseExpPercent}%; background: #a855f7; height: 100%; transition: width 0.3s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                <span class="stat-label">잡 경험치</span>
+                <span class="stat-value" style="color: #6ee7b7;">JobLv.${playerState.jobLevel} (${playerState.jobExp || 0}/${jobReq})</span>
+            </div>
             <div style="width: 100%; background: #334155; height: 6px; border-radius: 4px; margin-top: 8px; overflow: hidden;">
-                <div style="width: ${expPercent}%; background: #a855f7; height: 100%; transition: width 0.3s ease;"></div>
+                <div style="width: ${jobExpPercent}%; background: #10b981; height: 100%; transition: width 0.3s ease;"></div>
             </div>
         </div>
 
@@ -516,44 +700,110 @@ window.renderPlayerStats = function() {
         <div class="stat-box"><span class="stat-label">MP</span><span class="stat-value" style="color: #3b82f6;">${playerState.currentMp} / ${playerState.maxMp}</span></div>
         <div class="stat-box"><span class="stat-label">소지금</span><span class="stat-value gold">${playerState.gold} G</span></div>
 
-        <div class="stat-section" style="grid-column: span 3; margin-top: 8px; margin-bottom: 4px;">
-            <h3 style="font-size: 14px; color: #f59e0b; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">기본 스탯</h3>
-        </div>
-        <div class="stat-box"><span class="stat-label">STR</span><span class="stat-value">${playerState.getTotalStat('str')}</span></div>
-        <div class="stat-box"><span class="stat-label">AGI</span><span class="stat-value">${playerState.getTotalStat('agi')}</span></div>
-        <div class="stat-box"><span class="stat-label">DEX</span><span class="stat-value">${playerState.getTotalStat('dex')}</span></div>
-        <div class="stat-box"><span class="stat-label">VIT</span><span class="stat-value">${playerState.getTotalStat('vit')}</span></div>
-        <div class="stat-box"><span class="stat-label">INT</span><span class="stat-value">${playerState.getTotalStat('int')}</span></div>
-        <div class="stat-box"><span class="stat-label">LUK</span><span class="stat-value">${playerState.getTotalStat('luk')}</span></div>
+        ${statBoxesHtml}
 
         <div class="stat-section" style="grid-column: span 3; margin-top: 8px; margin-bottom: 4px;">
             <h3 style="font-size: 14px; color: #a855f7; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">전투 능력치</h3>
         </div>
-        <div class="stat-box"><span class="stat-label">근접 공격력</span><span class="stat-value">${playerState.meleeAttack}</span></div>
-        <div class="stat-box"><span class="stat-label">원거리 공격력</span><span class="stat-value">${playerState.rangedAttack}</span></div>
-        <div class="stat-box"><span class="stat-label">마법 공격력</span><span class="stat-value">${playerState.magicAttack}</span></div>
-        <div class="stat-box"><span class="stat-label">방어력</span><span class="stat-value">${playerState.defense}</span></div>
-        <div class="stat-box"><span class="stat-label">속도</span><span class="stat-value">${playerState.speed}</span></div>
-        <div class="stat-box"><span class="stat-label">명중률</span><span class="stat-value">${playerState.accuracy}%</span></div>
-        <div class="stat-box"><span class="stat-label">회피율</span><span class="stat-value">${playerState.evasion}%</span></div>
-        <div class="stat-box"><span class="stat-label">치명타 확률</span><span class="stat-value">${playerState.critChance}%</span></div>
-        <div class="stat-box"><span class="stat-label">치명타 피해</span><span class="stat-value">${playerState.critDamage}%</span></div>
+        <div style="grid-column: span 3; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%;">
+            <div class="stat-box" style="margin:0;"><span class="stat-label">근접 공격력</span><span class="stat-value">${playerState.meleeAttack}</span></div>
+            <div class="stat-box" style="margin:0;"><span class="stat-label">원거리 공격력</span><span class="stat-value">${playerState.rangedAttack}</span></div>
+            <div class="stat-box" style="margin:0;"><span class="stat-label">마법 공격력</span><span class="stat-value">${playerState.magicAttack}</span></div>
+            <div class="stat-box" style="margin:0;"><span class="stat-label">방어력</span><span class="stat-value">${playerState.defense}</span></div>
+            <div class="stat-box" style="margin:0;"><span class="stat-label">속도</span><span class="stat-value">${playerState.speed}</span></div>
+            <div class="stat-box" style="margin:0;"><span class="stat-label">명중률</span><span class="stat-value">${playerState.accuracy}%</span></div>
+            <div class="stat-box" style="margin:0;"><span class="stat-label">회피율</span><span class="stat-value">${playerState.evasion}%</span></div>
+            <div class="stat-box" style="margin:0;"><span class="stat-label">치명타 확률</span><span class="stat-value">${playerState.critChance}%</span></div>
+            <div class="stat-box" style="margin:0; grid-column: span 2;"><span class="stat-label">치명타 피해</span><span class="stat-value">${playerState.critDamage}%</span></div>
+        </div>
     `;
 
     // 스킬 관리 섹션 추가
     const jobSkills = JOB_DB[playerState.job] ? JOB_DB[playerState.job].bonusSkills : [];
     
+    // 호환성: 이전 객체 형태면 문자열로 변환 (state.js에서 했겠지만 혹시 몰라서 추가)
+    if (playerState.equippedSkills.length > 0 && typeof playerState.equippedSkills[0] === 'object') {
+        playerState.equippedSkills = playerState.equippedSkills.map(s => s.name);
+    }
+
     // 호환성: 이전 직업의 스킬이 equippedSkills에 남아있는 경우 필터링하여 삭제
-    const validEquipped = playerState.equippedSkills.filter(s => jobSkills.includes(s.name));
+    const validEquipped = playerState.equippedSkills.filter(sName => jobSkills.includes(sName));
     if (validEquipped.length !== playerState.equippedSkills.length) {
         playerState.equippedSkills = validEquipped;
     }
 
-    let skillHtml = `
+    let skillTreeHtml = `
         <div class="stat-section" style="grid-column: span 3; margin-top: 16px; margin-bottom: 4px;">
-            <h3 style="font-size: 14px; color: #ef4444; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">스킬 장착 및 발동 확률 설정</h3>
+            <h3 style="font-size: 14px; color: #fcd34d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; display: flex; justify-content: space-between;">
+                <span>스킬 트리 (배우기)</span>
+                <span style="font-size: 12px; color: #94a3b8;">잔여 SP: <span style="color: #10b981; font-weight: bold;">${playerState.skillPoints || 0}</span></span>
+            </h3>
+        </div>
+        <div style="grid-column: span 3; display: flex; flex-direction: column; gap: 8px; width: 100%;">
+    `;
+    
+    if (jobSkills && jobSkills.length > 0) {
+        jobSkills.forEach(skillName => {
+            const skillData = SKILL_DB[skillName];
+            if (!skillData) return;
+            const level = playerState.skills[skillName] || 0;
+            const maxLevel = skillData.maxLevel || 10;
+            
+            // 선행 스킬 체크
+            let reqMet = true;
+            let reqText = '';
+            if (skillData.reqSkills && Object.keys(skillData.reqSkills).length > 0) {
+                const reqs = [];
+                for (let rSkill in skillData.reqSkills) {
+                    const rLevel = skillData.reqSkills[rSkill];
+                    const currentRLevel = playerState.skills[rSkill] || 0;
+                    if (currentRLevel < rLevel) reqMet = false;
+                    reqs.push(`${rSkill} Lv.${rLevel}`);
+                }
+                reqText = `(선행: ${reqs.join(', ')})`;
+            }
+            
+            const canUpgrade = level < maxLevel && (playerState.skillPoints || 0) > 0 && reqMet;
+            let btnHtml = '';
+            if (level < maxLevel) {
+                btnHtml = `<button class="action-btn skill-up-btn" data-skill="${skillName}" style="padding: 4px 8px; font-size: 11px; width: auto; min-width: 60px; margin: 0; ${canUpgrade ? 'border-color: #10b981; color: #6ee7b7;' : 'opacity: 0.3; cursor: not-allowed;'}" ${canUpgrade ? '' : 'disabled'}>+ 1 UP</button>`;
+            } else {
+                btnHtml = `<button class="action-btn" style="padding: 4px 8px; font-size: 11px; width: auto; min-width: 60px; margin: 0; opacity: 0.5; border-color: #ef4444; color: #ef4444;" disabled>MAX</button>`;
+            }
+            
+            let colorTitle = level > 0 ? '#f8fafc' : '#94a3b8';
+            if (skillData.type === 'passive') colorTitle = '#a78bfa'; // 패시브 스킬 보라색 표시
+
+            skillTreeHtml += `
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 6px; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: bold; color: ${colorTitle}; font-size: 14px;">${skillName}</span>
+                            <span style="font-size: 12px; color: ${level >= maxLevel ? '#f59e0b' : '#3b82f6'};">Lv.${level} / ${maxLevel}</span>
+                        </div>
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                            ${skillData.desc}
+                            ${reqText ? `<div style="color: ${reqMet ? '#10b981' : '#ef4444'}; margin-top: 2px;">${reqText}</div>` : ''}
+                        </div>
+                    </div>
+                    <div>
+                        ${btnHtml}
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        skillTreeHtml += `<div style="color: #64748b; font-size: 12px;">현재 직업은 스킬 트리가 없습니다.</div>`;
+    }
+    skillTreeHtml += `</div>`;
+    statsContainer.innerHTML += skillTreeHtml;
+
+    let skillHtml = `
+        <div class="stat-section" style="grid-column: span 3; margin-top: 24px; margin-bottom: 4px;">
+            <h3 style="font-size: 14px; color: #ef4444; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">자동 사냥 스킬 우선순위 설정</h3>
             <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
-                * 전투 시 설정된 확률에 따라 스킬이 발동되며, 남는 확률은 <strong>[일반 공격]</strong>으로 발동됩니다. (마나 부족 시 일반 공격 대체)
+                * 위쪽에 있을수록 우선적으로 사용합니다. (마나, 쿨타임, 버프 상태를 자동으로 판단합니다.)<br>
+                * 우선순위에 등록되지 않거나 모두 조건이 안 될 경우 <strong>[일반 공격]</strong>이 나갑니다.
             </div>
         </div>
     `;
@@ -561,40 +811,52 @@ window.renderPlayerStats = function() {
     if (!jobSkills || jobSkills.length === 0) {
         skillHtml += `<div style="grid-column: span 3; color: #64748b; font-size: 12px; margin-top: 8px;">현재 보유한 스킬이 없습니다.</div>`;
     } else {
-        jobSkills.forEach(skillName => {
+        // 등록된 스킬들을 순서대로 먼저 표시
+        playerState.equippedSkills.forEach((skillName, index) => {
             const skillData = SKILL_DB[skillName];
             if (!skillData) return;
-            const equipped = playerState.equippedSkills.find(s => s.name === skillName);
-            const isEquipped = !!equipped;
-            const prob = isEquipped ? equipped.prob : 0;
+            const level = playerState.skills[skillName] || 1;
+            const costMp = skillData.getCostMp ? skillData.getCostMp(level) : 0;
             
             skillHtml += `
-                <div style="grid-column: span 3; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin-top: 4px;">
+                <div style="grid-column: span 3; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); border: 1px solid #3b82f6; padding: 8px; border-radius: 4px; margin-top: 4px;">
                     <div style="flex: 1;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="skill-equip-${skillName}" class="skill-equip-cb" data-skill="${skillName}" ${isEquipped ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px;">
-                            <label for="skill-equip-${skillName}" style="font-weight: 600; font-size: 14px; color: ${isEquipped ? '#f8fafc' : '#94a3b8'}; cursor: pointer;">${skillName}</label>
+                            <input type="checkbox" id="skill-equip-${skillName}" class="skill-equip-cb" data-skill="${skillName}" checked style="cursor: pointer; width: 16px; height: 16px;">
+                            <label for="skill-equip-${skillName}" style="font-weight: 600; font-size: 14px; color: #60a5fa; cursor: pointer;">[${index + 1}순위] ${skillName} Lv.${level}</label>
                         </div>
-                        <div style="font-size: 11px; color: #64748b; margin-top: 4px; margin-left: 24px;">${skillData.desc} <span style="color: #3b82f6;">(MP: ${skillData.costMp})</span></div>
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 4px; margin-left: 24px;">${skillData.desc} <span style="color: #3b82f6;">(MP: ${costMp})</span></div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 4px;">
-                        <input type="number" class="skill-prob-input" data-skill="${skillName}" value="${prob}" min="0" max="100" ${!isEquipped ? 'disabled' : ''} style="width: 50px; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 4px; padding: 4px; text-align: right;">
-                        <span style="color: #94a3b8; font-size: 12px;">%</span>
+                        <button class="action-btn skill-move-btn" data-skill="${skillName}" data-dir="up" style="padding: 4px 8px; font-size: 12px; width: auto;" ${index === 0 ? 'disabled' : ''}>▲</button>
+                        <button class="action-btn skill-move-btn" data-skill="${skillName}" data-dir="down" style="padding: 4px 8px; font-size: 12px; width: auto;" ${index === playerState.equippedSkills.length - 1 ? 'disabled' : ''}>▼</button>
                     </div>
                 </div>
             `;
         });
         
-        const totalProb = playerState.equippedSkills.reduce((sum, s) => sum + s.prob, 0);
-        let probStatusColor = totalProb > 100 ? '#ef4444' : (totalProb === 100 ? '#10b981' : '#3b82f6');
-        skillHtml += `
-            <div style="grid-column: span 3; text-align: right; font-size: 12px; margin-top: 8px;">
-                <span style="color: #94a3b8;">스킬 발동 총합: </span>
-                <strong style="color: ${probStatusColor};">${totalProb}%</strong>
-                <span style="color: #64748b; margin-left: 8px;">(일반 공격: ${Math.max(0, 100 - totalProb)}%)</span>
-                ${totalProb > 100 ? '<div style="color: #ef4444; margin-top: 4px;">경고: 총합이 100%를 초과했습니다! 초과분은 무시됩니다.</div>' : ''}
-            </div>
-        `;
+        // 미등록 스킬들 표시
+        jobSkills.forEach(skillName => {
+            if (playerState.equippedSkills.includes(skillName)) return; // 이미 등록됨
+            const skillData = SKILL_DB[skillName];
+            if (!skillData || skillData.type === 'passive') return; // 패시브 스킬은 자동 등록 목록에서 제외
+            const level = playerState.skills[skillName];
+            if (!level) return; // 배우지 않은 스킬은 자동 스킬 목록에서 제외
+            
+            const costMp = skillData.getCostMp ? skillData.getCostMp(level) : 0;
+            
+            skillHtml += `
+                <div style="grid-column: span 3; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); border: 1px solid #334155; padding: 8px; border-radius: 4px; margin-top: 4px;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="skill-equip-${skillName}" class="skill-equip-cb" data-skill="${skillName}" style="cursor: pointer; width: 16px; height: 16px;">
+                            <label for="skill-equip-${skillName}" style="font-weight: 600; font-size: 14px; color: #94a3b8; cursor: pointer;">${skillName} Lv.${level}</label>
+                        </div>
+                        <div style="font-size: 11px; color: #64748b; margin-top: 4px; margin-left: 24px;">${skillData.desc} <span style="color: #3b82f6;">(MP: ${costMp})</span></div>
+                    </div>
+                </div>
+            `;
+        });
     }
     statsContainer.innerHTML += skillHtml;
 
@@ -606,15 +868,64 @@ window.renderPlayerStats = function() {
         });
     });
 
-    const probInputs = statsContainer.querySelectorAll('.skill-prob-input');
-    probInputs.forEach(input => {
-        input.addEventListener('change', (e) => {
-            let val = parseInt(e.target.value) || 0;
-            if (val < 0) val = 0;
-            if (val > 100) val = 100;
-            handleSkillProbChange(e.target.dataset.skill, val);
+    const moveBtns = statsContainer.querySelectorAll('.skill-move-btn');
+    moveBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            handleSkillPriorityChange(e.target.dataset.skill, e.target.dataset.dir);
         });
     });
+
+    const statUpBtns = statsContainer.querySelectorAll('.stat-up-btn');
+    statUpBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const statKey = e.target.dataset.stat;
+            upgradeStat(statKey);
+        });
+    });
+    
+    const skillUpBtns = statsContainer.querySelectorAll('.skill-up-btn');
+    skillUpBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const skillName = e.target.dataset.skill;
+            upgradeSkill(skillName);
+        });
+    });
+};
+
+window.upgradeSkill = function(skillName) {
+    if (!playerState || playerState.skillPoints <= 0) return;
+    const skillData = SKILL_DB[skillName];
+    if (!skillData) return;
+    
+    const level = playerState.skills[skillName] || 0;
+    if (level >= (skillData.maxLevel || 10)) return;
+    
+    if (skillData.req) {
+        for (let rSkill in skillData.req) {
+            const rLevel = skillData.req[rSkill];
+            if ((playerState.skills[rSkill] || 0) < rLevel) return;
+        }
+    }
+    
+    const newSkills = { ...playerState.skills };
+    newSkills[skillName] = level + 1;
+    updatePlayerState({ skills: newSkills });
+};
+
+window.upgradeStat = function(statKey) {
+    if (!playerState) return;
+    const base = playerState.baseStats[statKey];
+    if (base >= 100) return;
+    
+    const cost = EXP_DB.getStatUpgradeCost(base);
+    if ((playerState.statPoints || 0) >= cost) {
+        const newStats = { ...playerState.baseStats };
+        newStats[statKey] += 1;
+        updatePlayerState({
+            baseStats: newStats,
+            statPoints: playerState.statPoints - cost
+        });
+    }
 };
 
 window.handleSkillEquipChange = function(skillName, isChecked) {
@@ -622,23 +933,33 @@ window.handleSkillEquipChange = function(skillName, isChecked) {
     let newSkills = [...playerState.equippedSkills];
     
     if (isChecked) {
-        if (!newSkills.find(s => s.name === skillName)) {
-            newSkills.push({ name: skillName, prob: 0 });
+        if (!newSkills.includes(skillName)) {
+            newSkills.push(skillName);
         }
     } else {
-        newSkills = newSkills.filter(s => s.name !== skillName);
+        newSkills = newSkills.filter(s => s !== skillName);
     }
     updatePlayerState({ equippedSkills: newSkills });
+    renderPlayerStats();
 };
 
-window.handleSkillProbChange = function(skillName, prob) {
-    if (!playerState.equippedSkills) playerState.equippedSkills = [];
+window.handleSkillPriorityChange = function(skillName, direction) {
+    if (!playerState.equippedSkills) return;
     let newSkills = [...playerState.equippedSkills];
-    let skill = newSkills.find(s => s.name === skillName);
-    if (skill) {
-        skill.prob = prob;
-        updatePlayerState({ equippedSkills: newSkills });
+    const idx = newSkills.indexOf(skillName);
+    if (idx === -1) return;
+    
+    if (direction === 'up' && idx > 0) {
+        const temp = newSkills[idx - 1];
+        newSkills[idx - 1] = newSkills[idx];
+        newSkills[idx] = temp;
+    } else if (direction === 'down' && idx < newSkills.length - 1) {
+        const temp = newSkills[idx + 1];
+        newSkills[idx + 1] = newSkills[idx];
+        newSkills[idx] = temp;
     }
+    updatePlayerState({ equippedSkills: newSkills });
+    renderPlayerStats();
 };
 
 // 인벤토리 렌더링
@@ -650,7 +971,7 @@ window.renderInventory = function() {
     playerState.inventory.forEach((item, originalIndex) => {
         if (!item) return;
         
-        if (item.type === 'consumable' || item.type === 'material') {
+        if (item.type === 'consumable' || item.type === 'material' || item.type === 'etc') {
             const existing = groupedInventory.find(g => g.item.name === item.name);
             if (existing) {
                 existing.count++;
@@ -674,6 +995,7 @@ window.renderInventory = function() {
             if (currentInvFilter === 'equip' && !isEquip) return;
             if (currentInvFilter === 'consumable' && item.type !== 'consumable') return;
             if (currentInvFilter === 'material' && item.type !== 'material') return;
+            if (currentInvFilter === 'etc' && item.type !== 'etc') return;
             if (currentInvFilter === 'event' && item.type !== 'event') return;
         }
 
@@ -697,7 +1019,7 @@ window.renderInventory = function() {
         const displayName = count > 1 ? `${item.name} <span style="color: #fcd34d; font-size: 13px;">x ${count}</span>` : item.name;
 
         div.innerHTML = `
-            <div>
+            <div title="${getItemTooltipText(item)}">
                 <div style="font-weight: 600; font-size: 14px; color: #f8fafc;">${displayName}</div>
                 <div style="font-size: 12px; color: #94a3b8;">${item.desc}</div>
             </div>
@@ -784,7 +1106,7 @@ window.renderWarehouse = function() {
     const groupedInv = [];
     playerState.inventory.forEach((item, index) => {
         if (!item) return;
-        if (item.type === 'consumable' || item.type === 'material') {
+        if (item.type === 'consumable' || item.type === 'material' || item.type === 'etc') {
             const existing = groupedInv.find(g => g.item.name === item.name);
             if (existing) {
                 existing.count++;
@@ -810,6 +1132,7 @@ window.renderWarehouse = function() {
         div.style.textAlign = 'left';
         div.style.display = 'flex';
         div.style.justifyContent = 'space-between';
+        div.title = getItemTooltipText(item);
         div.innerHTML = `<span>${displayName}</span> <span style="color:#94a3b8;">▶ 보관</span>`;
         div.addEventListener('click', () => storeInWarehouse(targetIndex));
         warehouseInvList.appendChild(div);
@@ -819,7 +1142,7 @@ window.renderWarehouse = function() {
     const groupedWh = [];
     warehouse.forEach((item, index) => {
         if (!item) return;
-        if (item.type === 'consumable' || item.type === 'material') {
+        if (item.type === 'consumable' || item.type === 'material' || item.type === 'etc') {
             const existing = groupedWh.find(g => g.item.name === item.name);
             if (existing) {
                 existing.count++;
@@ -845,6 +1168,7 @@ window.renderWarehouse = function() {
         div.style.textAlign = 'left';
         div.style.display = 'flex';
         div.style.justifyContent = 'space-between';
+        div.title = getItemTooltipText(item);
         div.innerHTML = `<span style="color:#94a3b8;">◀ 꺼내기</span> <span>${displayName}</span>`;
         div.addEventListener('click', () => takeFromWarehouse(targetIndex));
         warehouseStorageList.appendChild(div);
@@ -879,4 +1203,94 @@ window.takeFromWarehouse = function(index) {
     newInv.push(item);
     updatePlayerState({ inventory: newInv });
     renderWarehouse();
+};
+
+// 상점 판매 리스트 렌더링
+window.renderShopSellList = function() {
+    const shopSellList = document.getElementById('shop-sell-list');
+    if (!shopSellList) return;
+    
+    shopSellList.innerHTML = '';
+    
+    // 장착 중인 아이템 인덱스 파악
+    const equippedIndices = new Set();
+    if (playerState.equipment) {
+        Object.values(playerState.equipment).forEach(eq => {
+            if (eq) {
+                // 인벤토리 내에서 동일한 참조를 가지는 아이템을 찾지만,
+                // 안전하게 하기 위해 인벤토리에서 장비는 판매 리스트에서 아예 제외하는 것이 나을 수도 있음.
+                // 또는 타입이 장비인 것을 제외? "장착 중인 장비를 제외"하라는 것은 장착 안된 장비는 팔 수 있다는 뜻.
+                // 그러나 현재 구조상 equipment 객체에 따로 복사되어 들어가는지 참조인지 확인 필요.
+                // equipItem() 로직을 보면 인벤토리에서 splice 로 제거하고 equipment 에 넣으므로,
+                // 인벤토리에는 장착 중인 아이템이 없습니다!
+            }
+        });
+    }
+
+    const groupedInv = [];
+    playerState.inventory.forEach((item, index) => {
+        if (!item) return;
+        if (item.type === 'consumable' || item.type === 'material' || item.type === 'etc') {
+            const existing = groupedInv.find(g => g.item.name === item.name);
+            if (existing) {
+                existing.count++;
+                existing.indices.push(index);
+            } else {
+                groupedInv.push({ item, count: 1, indices: [index] });
+            }
+        } else {
+            groupedInv.push({ item, count: 1, indices: [index] });
+        }
+    });
+
+    if (groupedInv.length === 0) {
+        shopSellList.innerHTML = '<div style="color: #64748b; font-size: 12px; padding: 8px;">판매할 아이템이 없습니다.</div>';
+        return;
+    }
+
+    groupedInv.forEach((group) => {
+        const item = group.item;
+        const count = group.count;
+        const targetIndex = group.indices[0]; // 대표로 하나만 팝니다.
+        const displayName = count > 1 ? `${item.name} <span style="color: #fcd34d; font-size: 13px;">x ${count}</span>` : item.name;
+        
+        // 아이템의 price가 없으면 기본값 10
+        const itemPrice = item.price || 10;
+        const sellPrice = Math.floor(itemPrice / 2);
+
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        div.style.background = 'rgba(0,0,0,0.3)';
+        div.style.border = '1px solid #334155';
+        div.style.padding = '8px';
+        div.style.borderRadius = '4px';
+
+        div.innerHTML = `
+            <div title="${getItemTooltipText(item)}">
+                <div style="font-weight: 600; font-size: 13px; color: #cbd5e1;">${displayName}</div>
+                <div style="font-size: 11px; color: #94a3b8;">${item.desc}</div>
+            </div>
+            <button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #f59e0b; color: #fcd34d;" onclick="sellShopItem(${targetIndex}, ${sellPrice})">판매 (+${sellPrice}G)</button>
+        `;
+        shopSellList.appendChild(div);
+    });
+};
+
+// 상점 판매 로직
+window.sellShopItem = function(index, sellPrice) {
+    const item = playerState.inventory[index];
+    if (!item) return;
+
+    const newInv = [...playerState.inventory];
+    newInv.splice(index, 1);
+    
+    updatePlayerState({
+        gold: playerState.gold + sellPrice,
+        inventory: newInv
+    });
+    
+    renderShopSellList(); // 리스트 갱신
+    renderPlayerStats();  // 골드 갱신
 };
