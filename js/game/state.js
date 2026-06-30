@@ -45,6 +45,67 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 직업 레벨 및 경험치 시스템 완전 분리 호환성 마이그레이션
+    if (playerState.jobLevel === undefined) {
+        // 1. 구버전 경험치 테이블(레벨*100) 기준 총 누적 경험치 산출
+        let totalOldExp = 0;
+        for (let i = 1; i < playerState.level; i++) {
+            totalOldExp += (i * 100);
+        }
+        totalOldExp += (playerState.exp || 0);
+
+        // 2. 신버전 경험치 테이블(100*L^1.5) 적용하여 새로운 레벨 재계산
+        let newLevel = 1;
+        let newExp = totalOldExp;
+        let req = EXP_DB.getRequiredExp(newLevel);
+        while (newExp >= req && newLevel < 100) {
+            newExp -= req;
+            newLevel++;
+            req = EXP_DB.getRequiredExp(newLevel);
+        }
+
+        // 3. 인벤토리 보존 및 장착 장비 회수
+        const savedInventory = playerState.inventory || [];
+        if (playerState.equipment) {
+            for (let slot in playerState.equipment) {
+                if (playerState.equipment[slot]) {
+                    savedInventory.push(playerState.equipment[slot]);
+                    playerState.equipment[slot] = null;
+                }
+            }
+        }
+
+        // 4. 캐릭터 완전 초기화 (새로운 레벨 적용)
+        playerState.level = newLevel;
+        playerState.exp = newExp;
+        playerState.jobLevel = 1;
+        playerState.jobExp = 0;
+        playerState.job = "초보자";
+        playerState.gold = 500;
+        playerState.baseStats = { str: 1, agi: 1, dex: 1, vit: 1, int: 1, luk: 1 };
+        playerState.statPoints = EXP_DB.getAccumulatedStatPoints(newLevel);
+        playerState.skills = {};
+        playerState.equippedSkills = [];
+        playerState.inventory = savedInventory;
+        
+        // 체력 마나 갱신 (스탯 초기화 이후)
+        playerState.currentHp = playerState.maxHp;
+        playerState.currentMp = playerState.maxMp;
+    } else if (playerState.statPoints === undefined) {
+        // 아주 오래된 캐릭터를 위한 대비
+        playerState.baseStats = { str: 1, agi: 1, dex: 1, vit: 1, int: 1, luk: 1 };
+        playerState.statPoints = EXP_DB.getAccumulatedStatPoints(playerState.level);
+    }
+
+    // 신규 스킬 시스템(객체) 호환성 마이그레이션
+    if (Array.isArray(playerState.skills)) {
+        playerState.skills = {};
+        playerState.equippedSkills = [];
+        playerState.job = "초보자"; // 스킬 트리가 바뀌었으므로 직업도 리셋
+        playerState.jobLevel = 1;
+        playerState.jobExp = 0;
+    }
+
     // 테스트용 검 일회성 지급 및 10레벨 달성 로직 ("낮잠" 캐릭터 한정)
     if (playerState.name === "낮잠") {
         if (playerState.level < 10) {
@@ -83,7 +144,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function updatePlayerState(updates) {
     if (!playerState) return;
     for (const key in updates) {
-        if (key in playerState) {
+        if (key === 'fatigue') {
+            playerState[key] = Math.min(playerState.maxFatigue, updates[key]);
+        } else if (key in playerState) {
             playerState[key] = updates[key];
         } else if (key === 'baseStats' || key === 'equipment') {
             Object.assign(playerState[key], updates[key]);

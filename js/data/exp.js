@@ -1,11 +1,24 @@
 const EXP_DB = {
     // 요구 경험치 계산 함수
     getRequiredExp: function(level) {
-        return level * 100;
+        return Math.floor(100 * Math.pow(level, 1.5));
+    },
+    getRequiredJobExp: function(jobLevel) {
+        return Math.floor(130 * Math.pow(jobLevel, 1.5));
     },
     
-    // 레벨업 시 스탯 보너스 테이블
-    levelUpBonus: {
-        str: 1, agi: 1, dex: 1, vit: 1, int: 1, luk: 1
+    getStatPointsOnLevelUp: function(level) {
+        if (level <= 1) return 0;
+        return Math.floor((level - 1) / 10) * 2 + 2;
+    },
+    getAccumulatedStatPoints: function(level) {
+        let total = 0;
+        for (let i = 2; i <= level; i++) {
+            total += this.getStatPointsOnLevelUp(i);
+        }
+        return total;
+    },
+    getStatUpgradeCost: function(currentStat) {
+        return Math.floor((currentStat - 1) / 10) + 1;
     }
 };
