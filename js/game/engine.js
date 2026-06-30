@@ -111,7 +111,7 @@ function handleAutoPotion() {
 }
 
 function calculateHit(attackerAcc, defenderEva) {
-    const hitChance = Math.max(20, 100 + (attackerAcc - defenderEva) * 2);
+    const hitChance = Math.min(100, Math.max(5, 100 + (attackerAcc - defenderEva)));
     return (Math.random() * 100) < hitChance;
 }
 

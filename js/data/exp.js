@@ -1,7 +1,7 @@
 const EXP_DB = {
     // 요구 경험치 계산 함수
     getRequiredExp: function(level) {
-        return Math.floor(100 * Math.pow(level, 1.5));
+        return Math.floor(100 * Math.pow(level, 2.5));
     },
     getRequiredJobExp: function(jobLevel) {
         return Math.floor(130 * Math.pow(jobLevel, 1.5));

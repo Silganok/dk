@@ -77,7 +77,10 @@ function initGameUI() {
             btnBackToTown.style.display = 'block';
             
             if (targetId === 'town-warehouse') renderWarehouse();
-            if (targetId === 'town-shop') renderShopSellList();
+            if (targetId === 'town-sell') renderShopSellList();
+            if (targetId === 'town-weapon') renderShopCategoryList('weapon', 'shop-weapon-list');
+            if (targetId === 'town-armor') renderShopCategoryList('body', 'shop-armor-list');
+            if (targetId === 'town-consumable') renderShopCategoryList('consumable', 'shop-consumable-list');
         });
     });
 
@@ -161,56 +164,8 @@ function initGameUI() {
     }
 
     // --- 상점 기능 ---
-    const shopTabBtns = document.querySelectorAll('.shop-tab-btn');
-    const shopTabContents = document.querySelectorAll('.shop-tab-content');
-    shopTabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            shopTabBtns.forEach(b => {
-                b.classList.remove('active');
-                b.style.borderColor = '#475569';
-                b.style.color = '#cbd5e1';
-            });
-            btn.classList.add('active');
-            btn.style.borderColor = '#a855f7';
-            btn.style.color = '#d8b4fe';
 
-            shopTabContents.forEach(c => c.style.display = 'none');
-            document.getElementById(btn.dataset.target).style.display = 'block';
-            
-            if (btn.dataset.target === 'shop-sell') {
-                renderShopSellList();
-            }
-        });
-    });
-
-    const btnBuyItems = document.querySelectorAll('.btn-buy-item');
-    btnBuyItems.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const itemName = btn.dataset.item;
-            const price = parseInt(btn.dataset.price);
-            
-            if (playerState.gold >= price) {
-                let itemObj = {
-                    name: itemName,
-                    type: "consumable",
-                    desc: itemName === "초보자 체력 포션" ? "체력을 50 회복시켜 주는 초보자용 물약" : "마나를 30 회복시켜 주는 초보자용 물약"
-                };
-                if (itemName === "초보자 체력 포션") itemObj.healHp = 50;
-                if (itemName === "초보자 마나 포션") itemObj.healMp = 30;
-                
-                const newInv = [...playerState.inventory];
-                newInv.push(itemObj);
-                
-                updatePlayerState({
-                    gold: playerState.gold - price,
-                    inventory: newInv
-                });
-                alert(`${itemName}을(를) 구매했습니다!`);
-            } else {
-                alert("골드가 부족합니다.");
-            }
-        });
-    });
+    // (Static buy logic removed)
 
     if (inventoryFilters) {
         inventoryFilters.forEach(btn => {
@@ -570,7 +525,7 @@ function getItemTooltipText(item) {
     if (item.healHp) stats.push(`HP 회복: ${item.healHp}`);
     if (item.healMp) stats.push(`MP 회복: ${item.healMp}`);
     
-    let text = `${item.name}\n${item.desc}`;
+    let text = `${item.name}${item.subType ? ` [${item.subType}]` : ''}\n${item.desc}`;
     if (stats.length > 0) {
         text += `\n\n[상세 정보]\n` + stats.join('\n');
     }
@@ -1205,7 +1160,73 @@ window.takeFromWarehouse = function(index) {
     renderWarehouse();
 };
 
-// 상점 판매 리스트 렌더링
+window.renderShopCategoryList = function(categoryType, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    // ITEM_DB에서 해당 카테고리의 아이템만 필터링
+    const items = Object.entries(ITEM_DB)
+        .filter(([_, item]) => {
+            if (categoryType === 'weapon' || categoryType === 'body') return item.type === categoryType || item.type === 'accessory';
+            return item.type === categoryType;
+        });
+
+    if (items.length === 0) {
+        container.innerHTML = '<div style="color: #64748b; font-size: 12px; padding: 8px;">상품이 없습니다.</div>';
+        return;
+    }
+
+    items.forEach(([key, item]) => {
+        // 무기/방어구 상점에서 장신구는 모두 보이게 하거나 방어구 쪽에만 보이게 처리 가능
+        // 여기서는 무기상점(weapon)은 무기만, 방어구상점(body)은 방어구와 장신구를 띄우도록 조건 추가
+        if (categoryType === 'weapon' && item.type === 'accessory') return;
+        
+        let color = '#cbd5e1';
+        if (item.type === 'weapon') color = '#fca5a5';
+        else if (item.type === 'body' || item.type === 'accessory') color = '#fcd34d';
+        else if (item.type === 'consumable') color = '#a855f7';
+
+        const div = document.createElement('div');
+        div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 8px; border-radius: 4px;';
+        
+        div.innerHTML = `
+            <div>
+                <div style="font-weight: 600; font-size: 13px; color: ${color};">${item.name} <span style="font-size:10px;color:#94a3b8;">${item.subType ? `[${item.subType}]` : ''}</span></div>
+                <div style="font-size: 11px; color: #94a3b8; margin: 2px 0;">${item.desc}</div>
+            </div>
+            <button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: ${color}; color: ${color}; min-width: 80px;" onclick="buyShopItem('${key}')">구매 (${item.price}G)</button>
+        `;
+        container.appendChild(div);
+    });
+};
+
+window.buyShopItem = function(itemKey) {
+    const itemData = ITEM_DB[itemKey];
+    if (!itemData) return;
+    
+    if (playerState.gold < itemData.price) {
+        alert("골드가 부족합니다.");
+        return;
+    }
+    
+    // 깊은 복사로 인벤토리에 추가 (스탯 등의 객체가 오염되지 않도록)
+    const newItem = JSON.parse(JSON.stringify(itemData));
+    
+    const newInv = [...playerState.inventory];
+    newInv.push(newItem);
+    
+    updatePlayerState({
+        gold: playerState.gold - itemData.price,
+        inventory: newInv
+    });
+    
+    alert(`[${itemData.name}]을(를) 구매했습니다!`);
+    renderPlayerStats();
+};
+
+// 장비 판매 리스트 렌더링
 window.renderShopSellList = function() {
     const shopSellList = document.getElementById('shop-sell-list');
     if (!shopSellList) return;

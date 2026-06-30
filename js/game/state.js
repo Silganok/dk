@@ -106,24 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
         playerState.jobExp = 0;
     }
 
-    // 테스트용 검 일회성 지급 및 10레벨 달성 로직 ("낮잠" 캐릭터 한정)
-    if (playerState.name === "낮잠") {
-        if (playerState.level < 10) {
-            const levelDiff = 10 - playerState.level;
-            playerState.level = 10;
-            const stats = ['str', 'agi', 'dex', 'vit', 'int', 'luk'];
-            stats.forEach(s => { playerState.baseStats[s] += levelDiff; });
-            DB.saveCharacter(lastAccount, parseInt(lastSlot), rawPlayerState);
-        }
-
-        const hasTestSword = playerState.inventory.some(item => item && item.name === "테스트용 검") || 
-                             Object.values(playerState.equipment).some(item => item && item.name === "테스트용 검");
-        if (!hasTestSword && typeof ITEM_DB !== 'undefined' && ITEM_DB["테스트용 검"]) {
-            playerState.inventory.push(JSON.parse(JSON.stringify(ITEM_DB["테스트용 검"])));
-            DB.saveCharacter(lastAccount, parseInt(lastSlot), rawPlayerState);
-        }
-    }
-
     // 10초마다 피로도 1분(60000ms) 경과 체크 후 회복
     setInterval(() => {
         if (!playerState) return;
