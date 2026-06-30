@@ -1,8 +1,8 @@
 const MONSTER_DB = {
     // Lv 1
-    "포링": { name: "포링", element: "수", hp: 10, attack: 3, defense: 1, speed: 10, accuracy: 71, evasion: 5, luk: 0, exp: 30, jobExp: 30, gold: 10, dropTable: "포링" },
-    "파브르": { name: "파브르", element: "지", hp: 14, attack: 4, defense: 2, speed: 11, accuracy: 73, evasion: 5, luk: 0, exp: 44, jobExp: 45, gold: 20, dropTable: "파브르" },
-    "루나틱": { name: "루나틱", element: "무", hp: 12, attack: 5, defense: 2, speed: 11, accuracy: 74, evasion: 7, luk: 0, exp: 40, jobExp: 45, gold: 20, dropTable: "루나틱" },
+    "포링": { name: "포링", element: "수", hp: 10, attack: 3, defense: 1, speed: 10, accuracy: 71, evasion: 5, luk: 0, exp: 45, jobExp: 45, gold: 10, dropTable: "포링" },
+    "파브르": { name: "파브르", element: "지", hp: 14, attack: 4, defense: 2, speed: 11, accuracy: 73, evasion: 5, luk: 0, exp: 55, jobExp: 90, gold: 20, dropTable: "파브르" },
+    "루나틱": { name: "루나틱", element: "무", hp: 12, attack: 5, defense: 2, speed: 11, accuracy: 74, evasion: 7, luk: 0, exp: 90, jobExp: 55, gold: 20, dropTable: "루나틱" },
     "엔젤링": { name: "엔젤링", element: "성", hp: 196, attack: 25, defense: 10, speed: 12, accuracy: 77, evasion: 8, luk: 1, exp: 300, jobExp: 250, gold: 500, dropTable: "엔젤링" },
 
     // Lv 10
