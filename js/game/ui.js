@@ -22,6 +22,7 @@ function initGameUI() {
     btnMage = document.getElementById('btn-job-mage');
     btnArcher = document.getElementById('btn-job-archer');
     btnStatReset = document.getElementById('btn-stat-reset');
+    guildMenu = document.getElementById('guild-menu');
     warehouseMenu = document.getElementById('warehouse-menu');
     warehouseInvList = document.getElementById('warehouse-inventory-list');
     warehouseStorageList = document.getElementById('warehouse-storage-list');
@@ -115,6 +116,12 @@ function initGameUI() {
             if (targetId === 'town-consumable') {
                 const activeConsCat = document.querySelector('.btn-shop-cons-cat.active');
                 if (activeConsCat) activeConsCat.click();
+            }
+            if (targetId === 'town-guild') {
+                const jobSection = document.getElementById('guild-job-section');
+                if (jobSection) {
+                    jobSection.style.display = (playerState && playerState.job === '초보자') ? 'block' : 'none';
+                }
             }
         });
     });
@@ -324,16 +331,26 @@ function initGameUI() {
             if (res) {
                 playerState.skills = {};
                 playerState.equippedSkills = [];
-                updatePlayerState({ job: jobName, jobLevel: 1, jobExp: 0, skills: playerState.skills, equippedSkills: playerState.equippedSkills });
+                playerState.job = jobName;
+                playerState.jobLevel = 1;
+                playerState.jobExp = 0;
+                updatePlayerState({ job: jobName, jobLevel: 1, jobExp: 0, skills: {}, equippedSkills: [] });
                 
-                guildMenu.style.display = 'none';
+                // Firebase에도 즉시 백업
+                if (typeof DB !== 'undefined' && DB.backupToServer) {
+                    DB.backupToServer();
+                }
+                
+                // 전직 버튼 숨김
+                const jobChangeSection = document.getElementById('guild-job-section');
+                if (jobChangeSection) jobChangeSection.style.display = 'none';
                 
                 if (typeof switchTab === 'function') {
                     switchTab('info');
                 }
                 setTimeout(() => {
                     window.gameAlert(`${jobName}(으)로 전직했습니다!`, 'success', true);
-                }, 100);
+                }, 150);
             }
         });
     };
