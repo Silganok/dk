@@ -1,50 +1,45 @@
 const ITEM_DB = {
     // --- 무기 (Tier 1) ---
-    "단검": { name: "단검", type: "weapon", subType: "단검", attack: 3, price: 50, desc: "가장 기본적인 짧은 검입니다." },
-    "기사의 롱소드": { name: "기사의 롱소드", type: "weapon", subType: "한손검", attack: 25, price: 1500, desc: "정식 기사단에게 지급되는 표준 검입니다." },
-    "용병의 대검": { name: "용병의 대검", type: "weapon", subType: "양손검", attack: 35, speed: -5, price: 1500, desc: "무겁지만 강력한 양손 대검입니다." },
-    "사냥꾼의 단궁": { name: "사냥꾼의 단궁", type: "weapon", subType: "단궁", attack: 18, speed: 5, price: 1500, desc: "빠르게 쏠 수 있는 가벼운 활입니다." },
-    "사냥꾼의 장궁": { name: "사냥꾼의 장궁", type: "weapon", subType: "장궁", attack: 28, speed: -5, price: 1500, desc: "멀리, 강하게 쏘는 대신 시위를 당기기 힘든 큰 활입니다." },
-    "마법학도의 완드": { name: "마법학도의 완드", type: "weapon", subType: "완드", magicAttack: 20, mp: 20, price: 1500, desc: "초보 마법사를 위한 짧은 지팡이입니다." },
-    "마법학도의 스태프": { name: "마법학도의 스태프", type: "weapon", subType: "스태프", magicAttack: 32, speed: -5, price: 1500, desc: "강력한 마력이 깃들었으나 다루기 까다로운 긴 지팡이입니다." },
-    
+    "단검": { reqLevel: 1, name: "단검", type: "weapon", subType: "단검", attack: 3, price: 50, desc: "가장 기본적인 짧은 검입니다." },
+    "기사의 롱소드": { reqLevel: 10, name: "기사의 롱소드", type: "weapon", subType: "한손검", attack: 25, price: 1500, desc: "정식 기사단에게 지급되는 표준 검입니다." },
+    "용병의 대검": { reqLevel: 10, name: "용병의 대검", type: "weapon", subType: "양손검", attack: 35, speed: -5, price: 1500, desc: "무겁지만 강력한 양손 대검입니다." },
+    "사냥꾼의 단궁": { reqLevel: 10, name: "사냥꾼의 단궁", type: "weapon", subType: "단궁", attack: 18, speed: 5, price: 1500, desc: "빠르게 쏠 수 있는 가벼운 활입니다." },
+    "사냥꾼의 장궁": { reqLevel: 10, name: "사냥꾼의 장궁", type: "weapon", subType: "장궁", attack: 28, speed: -5, price: 1500, desc: "멀리, 강하게 쏘는 대신 시위를 당기기 힘든 큰 활입니다." },
+    "마법학도의 완드": { reqLevel: 10, name: "마법학도의 완드", type: "weapon", subType: "완드", magicAttack: 20, mp: 20, price: 1500, desc: "초보 마법사를 위한 짧은 지팡이입니다." },
+    "마법학도의 스태프": { reqLevel: 10, name: "마법학도의 스태프", type: "weapon", subType: "스태프", magicAttack: 32, speed: -5, price: 1500, desc: "강력한 마력이 깃들었으나 다루기 까다로운 긴 지팡이입니다." },
     // --- 무기 (Tier 2) ---
-    "강철 장검": { name: "강철 장검", type: "weapon", subType: "한손검", attack: 55, str: 3, price: 8000, desc: "질 좋은 강철로 벼려낸 예리한 검입니다." },
-    "강철 클레이모어": { name: "강철 클레이모어", type: "weapon", subType: "양손검", attack: 75, str: 5, speed: -10, price: 8000, desc: "거대한 크기를 자랑하는 강철 대검입니다." },
-    "엘븐 숏보우": { name: "엘븐 숏보우", type: "weapon", subType: "단궁", attack: 45, dex: 3, speed: 10, price: 8000, desc: "요정의 솜씨로 만들어진 매우 가벼운 활입니다." },
-    "저격수의 뿔활": { name: "저격수의 뿔활", type: "weapon", subType: "장궁", attack: 60, dex: 5, speed: -10, price: 8000, desc: "마수의 뿔을 덧대어 탄성을 극대화한 활입니다." },
-    "수호자의 완드": { name: "수호자의 완드", type: "weapon", subType: "완드", magicAttack: 45, mp: 50, price: 8000, desc: "견고한 마력이 흐르는 지팡이입니다." },
-    "원소의 스태프": { name: "원소의 스태프", type: "weapon", subType: "스태프", magicAttack: 70, int: 5, speed: -10, price: 8000, desc: "자연의 힘을 직접 끌어다 쓰는 강력한 지팡이입니다." },
-    
+    "강철 장검": { reqLevel: 20, name: "강철 장검", type: "weapon", subType: "한손검", attack: 55, str: 3, price: 8000, desc: "질 좋은 강철로 벼려낸 예리한 검입니다." },
+    "강철 클레이모어": { reqLevel: 20, name: "강철 클레이모어", type: "weapon", subType: "양손검", attack: 75, str: 5, speed: -10, price: 8000, desc: "거대한 크기를 자랑하는 강철 대검입니다." },
+    "엘븐 숏보우": { reqLevel: 20, name: "엘븐 숏보우", type: "weapon", subType: "단궁", attack: 45, dex: 3, speed: 10, price: 8000, desc: "요정의 솜씨로 만들어진 매우 가벼운 활입니다." },
+    "저격수의 뿔활": { reqLevel: 20, name: "저격수의 뿔활", type: "weapon", subType: "장궁", attack: 60, dex: 5, speed: -10, price: 8000, desc: "마수의 뿔을 덧대어 탄성을 극대화한 활입니다." },
+    "수호자의 완드": { reqLevel: 20, name: "수호자의 완드", type: "weapon", subType: "완드", magicAttack: 45, mp: 50, price: 8000, desc: "견고한 마력이 흐르는 지팡이입니다." },
+    "원소의 스태프": { reqLevel: 20, name: "원소의 스태프", type: "weapon", subType: "스태프", magicAttack: 70, int: 5, speed: -10, price: 8000, desc: "자연의 힘을 직접 끌어다 쓰는 강력한 지팡이입니다." },
     // --- 무기 (Tier 3) ---
-    "집행자의 룬소드": { name: "집행자의 룬소드", type: "weapon", subType: "한손검", attack: 110, str: 8, critChance: 5, price: 25000, desc: "룬의 마법이 새겨진 치명적인 명검입니다." },
-    "거인의 츠바이핸더": { name: "거인의 츠바이핸더", type: "weapon", subType: "양손검", attack: 140, critChance: 10, speed: -15, price: 25000, desc: "인간이 다루기 힘들 정도로 거대한 검입니다." },
-    "요정의 바람활": { name: "요정의 바람활", type: "weapon", subType: "단궁", attack: 90, evasion: 5, speed: 15, price: 25000, desc: "바람의 정령이 축복을 내린 신비한 활입니다." },
-    "발키리의 장궁": { name: "발키리의 장궁", type: "weapon", subType: "장궁", attack: 120, accuracy: 15, speed: -15, price: 25000, desc: "전장의 여신이 사용했다고 전해지는 성스러운 활입니다." },
-    "현자의 룬완드": { name: "현자의 룬완드", type: "weapon", subType: "완드", magicAttack: 90, int: 5, mp: 100, price: 25000, desc: "대마법사의 지식이 담겨있는 완드입니다." },
-    "대마법사의 지팡이": { name: "대마법사의 지팡이", type: "weapon", subType: "스태프", magicAttack: 135, int: 10, speed: -15, price: 25000, desc: "세상의 이치를 깨달은 자만이 다룰 수 있는 궁극의 지팡이입니다." },
-
+    "집행자의 룬소드": { reqLevel: 30, name: "집행자의 룬소드", type: "weapon", subType: "한손검", attack: 110, str: 8, critChance: 5, price: 25000, desc: "룬의 마법이 새겨진 치명적인 명검입니다." },
+    "거인의 츠바이핸더": { reqLevel: 30, name: "거인의 츠바이핸더", type: "weapon", subType: "양손검", attack: 140, critChance: 10, speed: -15, price: 25000, desc: "인간이 다루기 힘들 정도로 거대한 검입니다." },
+    "요정의 바람활": { reqLevel: 30, name: "요정의 바람활", type: "weapon", subType: "단궁", attack: 90, evasion: 5, speed: 15, price: 25000, desc: "바람의 정령이 축복을 내린 신비한 활입니다." },
+    "발키리의 장궁": { reqLevel: 30, name: "발키리의 장궁", type: "weapon", subType: "장궁", attack: 120, accuracy: 15, speed: -15, price: 25000, desc: "전장의 여신이 사용했다고 전해지는 성스러운 활입니다." },
+    "현자의 룬완드": { reqLevel: 30, name: "현자의 룬완드", type: "weapon", subType: "완드", magicAttack: 90, int: 5, mp: 100, price: 25000, desc: "대마법사의 지식이 담겨있는 완드입니다." },
+    "대마법사의 지팡이": { reqLevel: 30, name: "대마법사의 지팡이", type: "weapon", subType: "스태프", magicAttack: 135, int: 10, speed: -15, price: 25000, desc: "세상의 이치를 깨달은 자만이 다룰 수 있는 궁극의 지팡이입니다." },
     // --- 방어구 (Tier 1) ---
-    "초보자의 옷": { name: "초보자의 옷", type: "body", defense: 2, price: 20, desc: "여행자들이 입는 낡은 옷입니다." },
-    "기사의 흉갑": { name: "기사의 흉갑", type: "body", defense: 15, hp: 30, price: 1200, desc: "견고한 철로 만들어진 흉갑입니다." },
-    "사냥꾼의 튜닉": { name: "사냥꾼의 튜닉", type: "body", defense: 10, evasion: 5, hp: 50, price: 1200, desc: "움직임이 편한 경갑입니다." },
-    "마법사의 로브": { name: "마법사의 로브", type: "body", defense: 8, mp: 20, hp: 50, price: 1200, desc: "마력이 깃든 천옷입니다." },
-
+    "천옷": { reqLevel: 1, name: "천옷", type: "body", defense: 2, price: 20, desc: "여행자들이 입는 낡은 옷입니다." },
+    "기사의 흉갑": { reqLevel: 10, name: "기사의 흉갑", type: "body", defense: 15, hp: 30, price: 1200, desc: "견고한 철로 만들어진 흉갑입니다." },
+    "사냥꾼의 튜닉": { reqLevel: 10, name: "사냥꾼의 튜닉", type: "body", defense: 10, evasion: 5, hp: 50, price: 1200, desc: "움직임이 편한 경갑입니다." },
+    "마법사의 로브": { reqLevel: 10, name: "마법사의 로브", type: "body", defense: 8, mp: 20, hp: 50, price: 1200, desc: "마력이 깃든 천옷입니다." },
     // --- 방어구 (Tier 2) ---
-    "미스릴 갑옷": { name: "미스릴 갑옷", type: "body", defense: 35, hp: 100, price: 6500, desc: "신비한 금속 미스릴로 제련된 갑옷입니다." },
-    "암살자의 슈트": { name: "암살자의 슈트", type: "body", defense: 25, evasion: 10, hp: 100, price: 6500, desc: "어둠 속에 숨기 좋은 가벼운 가죽옷입니다." },
-    "현자의 로브": { name: "현자의 로브", type: "body", defense: 20, mp: 50, hp: 100, price: 6500, desc: "뛰어난 현자가 즐겨 입던 로브입니다." },
-
+    "미스릴 갑옷": { reqLevel: 20, name: "미스릴 갑옷", type: "body", defense: 35, hp: 100, price: 6500, desc: "신비한 금속 미스릴로 제련된 갑옷입니다." },
+    "암살자의 슈트": { reqLevel: 20, name: "암살자의 슈트", type: "body", defense: 25, evasion: 10, hp: 100, price: 6500, desc: "어둠 속에 숨기 좋은 가벼운 가죽옷입니다." },
+    "현자의 로브": { reqLevel: 20, name: "현자의 로브", type: "body", defense: 20, mp: 50, hp: 100, price: 6500, desc: "뛰어난 현자가 즐겨 입던 로브입니다." },
+    "마력의 망토": { reqLevel: 20, name: "마력의 망토", type: "body", defense: 10, magicDefense: 25, price: 3200, desc: "마법 공격을 훌륭하게 막아내는 특수 망토입니다." },
     // --- 방어구 (Tier 3) ---
-    "티타늄 플레이트": { name: "티타늄 플레이트", type: "body", defense: 70, hp: 250, vit: 5, price: 20000, desc: "가장 단단한 금속으로 만든 완전 무장 판금 갑옷입니다." },
-    "환영의 망토": { name: "환영의 망토", type: "body", defense: 50, evasion: 15, hp: 150, agi: 5, price: 20000, desc: "적의 눈을 속이는 환영을 만들어냅니다." },
-    "아크메이지 로브": { name: "아크메이지 로브", type: "body", defense: 40, mp: 120, hp: 150, int: 5, price: 20000, desc: "초월적인 마력이 뿜어져 나오는 궁극의 로브입니다." },
-
+    "티타늄 플레이트": { reqLevel: 30, name: "티타늄 플레이트", type: "body", defense: 70, hp: 250, vit: 5, price: 20000, desc: "가장 단단한 금속으로 만든 완전 무장 판금 갑옷입니다." },
+    "환영의 망토": { reqLevel: 30, name: "환영의 망토", type: "body", defense: 50, evasion: 15, hp: 150, agi: 5, price: 20000, desc: "적의 눈을 속이는 환영을 만들어냅니다." },
+    "아크메이지 로브": { reqLevel: 30, name: "아크메이지 로브", type: "body", defense: 40, mp: 120, hp: 150, int: 5, price: 20000, desc: "초월적인 마력이 뿜어져 나오는 궁극의 로브입니다." },
     // --- 장신구 (Accessory) ---
-    "광전사의 반지": { name: "광전사의 반지", type: "accessory", critChance: 15, defense: -10, price: 5000, desc: "방어력을 희생하여 치명적인 일격을 가합니다." },
-    "바람의 목걸이": { name: "바람의 목걸이", type: "accessory", speed: 20, evasion: 10, price: 5000, desc: "몸을 깃털처럼 가볍게 해줍니다. 양손 무기 패널티 상쇄용." },
-    "거북이 등껍질 부적": { name: "거북이 등껍질 부적", type: "accessory", defense: 30, speed: -15, price: 5000, desc: "속도를 희생하여 생존력을 극대화합니다." },
-    
+    "광전사의 반지": { reqLevel: 10, name: "광전사의 반지", type: "accessory", critChance: 15, defense: -10, price: 5000, desc: "방어력을 희생하여 치명적인 일격을 가합니다." },
+    "바람의 목걸이": { reqLevel: 10, name: "바람의 목걸이", type: "accessory", speed: 20, evasion: 10, price: 5000, desc: "몸을 깃털처럼 가볍게 해줍니다. 양손 무기 패널티 상쇄용." },
+    "거북이 등껍질 부적": { reqLevel: 10, name: "거북이 등껍질 부적", type: "accessory", defense: 30, speed: -15, price: 5000, desc: "속도를 희생하여 생존력을 극대화합니다." },
+    "은빛 십자가": { reqLevel: 10, name: "은빛 십자가", type: "accessory", magicDefense: 30, int: 2, price: 2500, desc: "성스러운 은으로 만들어져 사악한 마법을 튕겨냅니다." },
     // 소비 아이템
     "초보자 체력 포션": { name: "초보자 체력 포션", type: "consumable", healHp: 30, price: 10, desc: "체력을 30 회복합니다." },
     "초보자 마나 포션": { name: "초보자 마나 포션", type: "consumable", healMp: 20, price: 20, desc: "마나를 20 회복합니다." },
@@ -54,6 +49,11 @@ const ITEM_DB = {
     "고급 마나 포션": { name: "고급 마나 포션", type: "consumable", healMp: 300, price: 1000, desc: "마나를 300 회복합니다." },
     "최고급 체력 포션": { name: "최고급 체력 포션", type: "consumable", healHp: 2000, price: 2000, desc: "체력을 2000 회복합니다." },
     "엘릭서": { name: "엘릭서", type: "consumable", healHp: 9999, healMp: 9999, price: 10000, desc: "체력과 마나를 완벽하게 회복합니다." },
+    "해독제": { name: "해독제", type: "consumable", curePoison: true, price: 50, desc: "체내의 맹독을 해독합니다." },
+    "브록의 특제 연마석": { name: "브록의 특제 연마석", type: "consumable", sellPrice: 2000, price: 4000, desc: "브록이 특별히 만든 연마석입니다. 장비 상인에게 비싸게 팔릴 것 같습니다." },
+    "세실리아의 수상한 영약": { name: "세실리아의 수상한 영약", type: "consumable", healHp: 1000, healMp: 1000, price: 2000, desc: "부작용이 의심되지만 체력과 마나를 크게 회복시켜 줍니다." },
+    "마리안의 특대 샌드위치": { name: "마리안의 특대 샌드위치", type: "consumable", healFatigue: 200, price: 1500, desc: "엄청나게 큽니다. 피로도를 200 회복시켜 줍니다." },
+    "샤일록의 금화 주머니": { name: "샤일록의 금화 주머니", type: "consumable", gainGold: 5000, price: 10000, desc: "사용 시 5,000 골드를 즉시 획득합니다." },
 
     // 기존 재료 아이템 (기타로 통합 취급하거나 유지)
     "슬라임의 점액": { name: "슬라임의 점액", type: "material", price: 5, desc: "슬라임에게서 얻은 끈적끈적한 점액입니다. 아이템 제작에 쓰일지도 모릅니다." },
@@ -65,6 +65,7 @@ const ITEM_DB = {
     "초보자 지원 상자": { name: "초보자 지원 상자", type: "event", desc: "초보 모험가를 위한 특별한 선물이 들어있는 상자입니다." },
     "여신의 축복 쿠폰": { name: "여신의 축복 쿠폰", type: "event", desc: "이벤트 기간 동안 경험치와 드랍률을 올려줍니다." },
     "둥지로의 열쇠": { name: "둥지로의 열쇠", type: "event", desc: "용의 둥지로 가는 길을 여는 신비한 열쇠입니다. 입장 시 1개가 소모됩니다." },
+    "모험가의 증표": { name: "모험가의 증표", type: "event", desc: "어려운 의뢰를 완수한 모험가에게 주어지는 증표입니다. 특수 상점에서 쓰입니다." },
 
     // 신규 기타(Etc) 아이템
     "젤로피": { name: "젤로피", type: "etc", price: 3, desc: "포링이 떨어뜨린 투명한 젤리 모양의 물체." },
@@ -110,5 +111,5 @@ const ITEM_DB = {
     "깨진 거울 조각": { name: "깨진 거울 조각", type: "etc", price: 1200, desc: "도플갱어를 비추던 기분 나쁜 거울 파편." },
     "에드가의 파이프": { name: "에드가의 파이프", type: "etc", price: 1500, desc: "에드가가 물고 있던 담뱃대." },
     "개미의 턱": { name: "개미의 턱", type: "etc", price: 1400, desc: "마야의 거대하고 위협적인 턱." },
-    "바포메트의 뿔": { name: "바포메트의 뿔", type: "etc", price: 5000, desc: "파괴의 화신, 바포메트의 잘린 뿔." }
+    "바포메트의 뿔": { name: "바포메트의 뿔", type: "etc", price: 5000, desc: "파괴의 화신, 바포메트의 잘린 뿔." },
 };

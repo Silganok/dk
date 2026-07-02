@@ -20,7 +20,13 @@
             <!-- 상단 헤더 및 탭 영역 -->
             <header class="game-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h1 style="margin-bottom:0;">Dragon's Knight</h1>
-                <button class="action-btn" id="btn-to-char-select" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #64748b; color: #cbd5e1;" onclick="window.location.href='index.html';">선택창으로</button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="btn-notification" style="position: relative; background: transparent; border: 1px solid #334155; border-radius: 4px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 16px;">🔔</span>
+                        <span id="notif-badge" style="display: none; position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; font-size: 10px; font-weight: bold; border-radius: 50%; width: 16px; height: 16px; line-height: 16px; text-align: center;">0</span>
+                    </button>
+                    <button class="action-btn" id="btn-to-char-select" style="padding: 6px 12px; font-size: 12px; width: auto; border-color: #64748b; color: #cbd5e1;" onclick="window.location.href='index.html';">선택창으로</button>
+                </div>
             </header>
             <nav class="tabs" style="margin: 0 24px;">
                 <button class="tab-btn active" data-target="town">마을</button>
@@ -47,13 +53,11 @@
                         <div class="town-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
                             <button class="action-btn town-nav-btn" data-target="town-inn" style="height: 60px; font-size: 14px; border-color: #3b82f6; color: #93c5fd;">🏨 여관</button>
                             <button class="action-btn town-nav-btn" data-target="town-church" style="height: 60px; font-size: 14px; border-color: #10b981; color: #6ee7b7;">⛪ 성당</button>
-                            <button class="action-btn town-nav-btn" data-target="town-weapon" style="height: 60px; font-size: 14px; border-color: #ef4444; color: #fca5a5;">⚔️ 무기점</button>
-                            <button class="action-btn town-nav-btn" data-target="town-armor" style="height: 60px; font-size: 14px; border-color: #f59e0b; color: #fcd34d;">🛡️ 방어구점</button>
-                            <button class="action-btn town-nav-btn" data-target="town-consumable" style="height: 60px; font-size: 14px; border-color: #a855f7; color: #d8b4fe;">🧪 소모품점</button>
-                            <button class="action-btn town-nav-btn" data-target="town-sell" style="height: 60px; font-size: 14px; border-color: #64748b; color: #cbd5e1;">💰 매입소</button>
+                            <button class="action-btn town-nav-btn" data-target="town-weapon" style="height: 60px; font-size: 14px; border-color: #ef4444; color: #fca5a5;">⚔️ 장비 상점</button>
+                            <button class="action-btn town-nav-btn" data-target="town-consumable" style="height: 60px; font-size: 14px; border-color: #a855f7; color: #d8b4fe;">🧪 잡화 상점</button>
+                            <button class="action-btn town-nav-btn" data-target="town-sell" style="height: 60px; font-size: 14px; border-color: #64748b; color: #cbd5e1;">💰 전당포</button>
                             <button class="action-btn town-nav-btn" data-target="town-guild" style="height: 60px; font-size: 14px; border-color: #cbd5e1; color: #f8fafc;">🎪 모험가 길드</button>
-                            <button class="action-btn town-nav-btn" data-target="town-warehouse" style="height: 60px; font-size: 14px; border-color: #14b8a6; color: #5eead4;">📦 창고</button>
-                            <button class="action-btn" style="height: 60px; font-size: 14px; opacity: 0.5; cursor: not-allowed;" disabled>🔒 준비 중</button>
+                            <button class="action-btn town-nav-btn" data-target="town-warehouse" style="height: 60px; font-size: 14px; border-color: #14b8a6; color: #5eead4;">📦 계정 창고</button>
                         </div>
                     </div>
 
@@ -65,126 +69,192 @@
                         </div>
 
                         <!-- 🏨 여관 뷰 -->
-                        <div id="town-inn" class="town-subview content-box" style="display: none; border-color: #3b82f6;">
-                            <h3 style="color: #3b82f6; margin-bottom: 16px; font-size: 18px; text-align: center;">🏨 달빛 여관</h3>
-                            <p style="margin-bottom: 16px; font-size: 13px; color: #cbd5e1; text-align: center;">편안한 휴식을 취하거나 맛있는 요리로 기운을 차리세요.</p>
-                            
-                            <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border: 1px solid #334155; border-radius: 6px; margin-bottom: 16px;">
-                                <h4 style="color: #93c5fd; margin-bottom: 8px; font-size: 14px;">🛏️ 휴식하기</h4>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-size: 12px; color: #94a3b8;">체력(HP)과 마력(MP)을 100% 회복합니다.</span>
-                                    <button class="action-btn" id="btn-inn-rest" style="padding: 6px 12px; font-size: 12px; width: auto; border-color: #3b82f6; color: #93c5fd;">휴식 (0G)</button>
+                        <div id="town-inn" class="town-subview content-box" style="display: none; border-color: #3b82f6; flex-direction: column; height: 100%;">
+                            <h3 style="color: #3b82f6; margin-bottom: 16px; font-size: 18px; text-align: center;">🏨 달빛 쉼터</h3>
+                            <!-- NPC Header -->
+                            <div style="background: rgba(0,0,0,0.4); border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-shrink: 0;">
+                                <div style="width: 60px; height: 60px; background: #1e293b; border-radius: 50%; border: 2px solid #3b82f6; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px;">🍲</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; color: #93c5fd; font-size: 14px; margin-bottom: 4px;" id="npc-name-marian"></div>
+                                    <div style="color: #e2e8f0; font-size: 13px; font-style: italic; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; border-left: 3px solid #3b82f6;" id="npc-greet-marian"></div>
                                 </div>
                             </div>
 
-                            <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border: 1px solid #334155; border-radius: 6px;">
-                                <h4 style="color: #f59e0b; margin-bottom: 8px; font-size: 14px;">🍲 식사하기 (식사 버프)</h4>
-                                <p style="font-size: 11px; color: #94a3b8; margin-bottom: 12px;">든든한 요리를 먹고 10번의 전투 동안 버프를 받습니다.</p>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #334155; padding-top: 8px;">
-                                        <div>
-                                            <div style="color: #f8fafc; font-size: 13px; font-weight: bold;">🍖 든든한 멧돼지 바비큐</div>
-                                            <div style="color: #94a3b8; font-size: 11px;">10회 전투 동안 물리/마법 공격력 10% 증가</div>
-                                        </div>
-                                        <button class="action-btn btn-inn-meal" data-meal="bbq" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #ef4444; color: #fca5a5;">먹기 (100G)</button>
+                            <!-- Scrollable Content -->
+                            <div style="flex: 1; overflow-y: auto;">
+                                
+                                <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border: 1px solid #334155; border-radius: 6px; margin-bottom: 16px;">
+                                    <h4 style="color: #93c5fd; margin-bottom: 8px; font-size: 14px;">🛏️ 피로 회복</h4>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 12px; color: #94a3b8;">누적된 피로도(Fatigue)를 100 회복합니다.</span>
+                                        <button class="action-btn" id="btn-inn-rest" style="padding: 6px 12px; font-size: 12px; width: auto; border-color: #3b82f6; color: #93c5fd;">휴식 (50G)</button>
                                     </div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #334155; padding-top: 8px;">
-                                        <div>
-                                            <div style="color: #f8fafc; font-size: 13px; font-weight: bold;">🥗 상큼한 허브 샐러드</div>
-                                            <div style="color: #94a3b8; font-size: 11px;">10회 전투 동안 명중률/회피율 10 증가</div>
-                                        </div>
-                                        <button class="action-btn btn-inn-meal" data-meal="salad" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #10b981; color: #6ee7b7;">먹기 (80G)</button>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #334155; padding-top: 8px;">
-                                        <div>
-                                            <div style="color: #f8fafc; font-size: 13px; font-weight: bold;">🍲 특제 해산물 스튜</div>
-                                            <div style="color: #94a3b8; font-size: 11px;">10회 전투 동안 획득 경험치 15% 증가</div>
-                                        </div>
-                                        <button class="action-btn btn-inn-meal" data-meal="stew" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #3b82f6; color: #93c5fd;">먹기 (150G)</button>
+                                </div>
+
+                                <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border: 1px solid #334155; border-radius: 6px;">
+                                    <h4 style="color: #f59e0b; margin-bottom: 8px; font-size: 14px;">🍲 식사하기</h4>
+                                    <p style="font-size: 11px; color: #94a3b8; margin-bottom: 12px;">든든한 요리를 먹고 지정된 전투 횟수 동안 버프를 받습니다. (식사류 1개, 디저트류 1개 총 2개까지 중첩 가능)</p>
+                                    <div id="inn-meal-list" style="display: flex; flex-direction: column; gap: 8px;">
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- ⛪ 성당 뷰 -->
-                        <div id="town-church" class="town-subview content-box" style="display: none; border-color: #10b981;">
-                            <h3 style="color: #10b981; margin-bottom: 16px; font-size: 18px; text-align: center;">⛪ 프론테라 대성당</h3>
-                            <p style="margin-bottom: 16px; font-size: 13px; color: #cbd5e1; text-align: center;">헌금을 내고 여신의 가호를 받아 피로도를 회복하세요.</p>
-                            
-                            <div style="text-align: center; background: rgba(15, 23, 42, 0.6); padding: 20px; border: 1px solid #334155; border-radius: 6px;">
-                                <div style="font-size: 40px; margin-bottom: 12px;">✨</div>
-                                <h4 style="color: #6ee7b7; margin-bottom: 8px; font-size: 15px;">여신의 가호 (피로도 +100)</h4>
-                                <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">회복 비용은 현재 레벨에 비례하여 증가합니다.</p>
-                                <button class="action-btn" id="btn-church-heal" style="font-size: 14px; border-color: #10b981; color: #6ee7b7; width: 80%;">가호 받기 (0G)</button>
-                            </div>
-                        </div>
-
-                        <!-- ⚔️ 무기점 뷰 -->
-                        <div id="town-weapon" class="town-subview content-box" style="display: none; border-color: #ef4444;">
-                            <div style="background: rgba(239, 68, 68, 0.1); border: 1px dashed #ef4444; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 12px;">
-                                <div style="font-size: 32px;">🧔</div>
-                                <div>
-                                    <h4 style="color: #fca5a5; margin-bottom: 4px; font-size: 14px;">대장장이 바르만</h4>
-                                    <p style="font-size: 13px; color: #cbd5e1; line-height: 1.4;">"어떤 무기를 찾나? 완드나 단검은 데미지가 안정적이지만, 양손 무기나 장궁은 운에 따라 위력이 널뛰기를 하니 럭키 펀치를 노려보라고!"</p>
+                        <div id="town-church" class="town-subview content-box" style="display: none; border-color: #10b981; flex-direction: column; height: 100%;">
+                            <h3 style="color: #10b981; margin-bottom: 16px; font-size: 18px; text-align: center;">⛪ 여신의 품</h3>
+                            <!-- NPC Header -->
+                            <div style="background: rgba(0,0,0,0.4); border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-shrink: 0;">
+                                <div style="width: 60px; height: 60px; background: #1e293b; border-radius: 50%; border: 2px solid #10b981; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px;">🕊️</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; color: #6ee7b7; font-size: 14px; margin-bottom: 4px;" id="npc-name-gabriel"></div>
+                                    <div style="color: #e2e8f0; font-size: 13px; font-style: italic; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; border-left: 3px solid #10b981;" id="npc-greet-gabriel"></div>
                                 </div>
                             </div>
-                            <h3 style="color: #ef4444; margin-bottom: 16px; font-size: 18px; text-align: center;">⚔️ 바르만의 무기점</h3>
-                            <div id="shop-weapon-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+
+                            <!-- Scrollable Content -->
+                            <div style="flex: 1; overflow-y: auto;">
+                                
+                                <div style="text-align: center; background: rgba(15, 23, 42, 0.6); padding: 20px; border: 1px solid #334155; border-radius: 6px; margin-bottom: 16px;">
+                                    <div style="font-size: 40px; margin-bottom: 12px;">✨</div>
+                                    <h4 style="color: #6ee7b7; margin-bottom: 8px; font-size: 15px;">여신의 치유 (HP/MP 100% 회복)</h4>
+                                    <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">치유 비용은 현재 레벨에 비례하여 증가합니다.</p>
+                                    <button class="action-btn" id="btn-church-heal" style="font-size: 14px; border-color: #10b981; color: #6ee7b7; width: 80%;">치유 받기 (100G)</button>
+                                </div>
+
+                                <div style="background: rgba(15, 23, 42, 0.6); padding: 16px; border: 1px solid #334155; border-radius: 6px;">
+                                    <h4 style="color: #fcd34d; margin-bottom: 12px; font-size: 14px;">순백의 세례 (초기화)</h4>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        <button class="action-btn" id="btn-stat-reset" style="width: 100%; border-color: #f59e0b; color: #fcd34d;">스탯 초기화 (무료)</button>
+                                        <button class="action-btn" id="btn-skill-reset" style="width: 100%; border-color: #a855f7; color: #d8b4fe;">스킬 초기화 (무료)</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 🛡️ 방어구점 뷰 -->
-                        <div id="town-armor" class="town-subview content-box" style="display: none; border-color: #f59e0b;">
-                            <h3 style="color: #f59e0b; margin-bottom: 16px; font-size: 18px; text-align: center;">🛡️ 방어구점</h3>
-                            <div id="shop-armor-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+                        <!-- ⚔️ 장비 상점 뷰 -->
+                        <div id="town-weapon" class="town-subview content-box" style="display: none; border-color: #ef4444; flex-direction: column; height: 100%;">
+                            <h3 style="color: #ef4444; margin-bottom: 16px; font-size: 18px; text-align: center;">⚔️ 붉은 모루와 물약 병</h3>
+                            <!-- NPC Header -->
+                            <div style="background: rgba(0,0,0,0.4); border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-shrink: 0;">
+                                <div style="width: 60px; height: 60px; background: #1e293b; border-radius: 50%; border: 2px solid #ef4444; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px;">⚒️</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; color: #fca5a5; font-size: 14px; margin-bottom: 4px;" id="npc-name-brok"></div>
+                                    <div style="color: #e2e8f0; font-size: 13px; font-style: italic; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; border-left: 3px solid #ef4444;" id="npc-greet-brok"></div>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Content -->
+                            <div style="flex: 1; overflow-y: auto;">
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                    <button class="action-btn active btn-shop-weapon-cat" data-cat="weapon" style="flex: 1; font-size: 13px; border-color: #ef4444; color: #fca5a5;">무기 구매</button>
+                                    <button class="action-btn btn-shop-weapon-cat" data-cat="armor" style="flex: 1; font-size: 13px; border-color: #475569; color: #cbd5e1;">방어구 구매</button>
+                                </div>
+                                <div id="shop-weapon-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 🧪 소모품점 뷰 -->
-                        <div id="town-consumable" class="town-subview content-box" style="display: none; border-color: #a855f7;">
-                            <h3 style="color: #a855f7; margin-bottom: 16px; font-size: 18px; text-align: center;">🧪 잡화점</h3>
-                            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">* 구매한 물약은 전투 중 조건에 맞으면 자동으로 소모됩니다.</p>
-                            <div id="shop-consumable-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+                        <!-- 🧪 잡화 상점 뷰 -->
+                        <div id="town-consumable" class="town-subview content-box" style="display: none; border-color: #a855f7; flex-direction: column; height: 100%;">
+                            <h3 style="color: #a855f7; margin-bottom: 16px; font-size: 18px; text-align: center;">🧪 별가루 연금술</h3>
+                            <!-- NPC Header -->
+                            <div style="background: rgba(0,0,0,0.4); border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-shrink: 0;">
+                                <div style="width: 60px; height: 60px; background: #1e293b; border-radius: 50%; border: 2px solid #a855f7; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px;">💥</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; color: #d8b4fe; font-size: 14px; margin-bottom: 4px;" id="npc-name-cecilia"></div>
+                                    <div style="color: #e2e8f0; font-size: 13px; font-style: italic; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; border-left: 3px solid #a855f7;" id="npc-greet-cecilia"></div>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Content -->
+                            <div style="flex: 1; overflow-y: auto;">
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                    <button class="action-btn active btn-shop-cons-cat" data-cat="accessory" style="flex: 1; font-size: 13px; border-color: #a855f7; color: #d8b4fe;">장신구 구매</button>
+                                    <button class="action-btn btn-shop-cons-cat" data-cat="consumable" style="flex: 1; font-size: 13px; border-color: #475569; color: #cbd5e1;">소모품 구매</button>
+                                </div>
+                                <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">* 구매한 물약은 전투 중 조건에 맞으면 자동으로 소모됩니다.</p>
+                                <div id="shop-consumable-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 💰 매입소 뷰 -->
-                        <div id="town-sell" class="town-subview content-box" style="display: none; border-color: #64748b;">
-                            <h3 style="color: #cbd5e1; margin-bottom: 16px; font-size: 18px; text-align: center;">💰 전당포 (매입소)</h3>
-                            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">* 장착 중인 장비를 제외한 인벤토리 아이템을 원가의 50%에 판매합니다.</p>
-                            <div id="shop-sell-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+                        <!-- 💰 전당포 (매입소) 뷰 -->
+                        <div id="town-sell" class="town-subview content-box" style="display: none; border-color: #64748b; flex-direction: column; height: 100%;">
+                            <h3 style="color: #cbd5e1; margin-bottom: 16px; font-size: 18px; text-align: center;">💰 구두쇠의 금화</h3>
+                            <!-- NPC Header -->
+                            <div style="background: rgba(0,0,0,0.4); border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-shrink: 0;">
+                                <div style="width: 60px; height: 60px; background: #1e293b; border-radius: 50%; border: 2px solid #64748b; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px;">🤑</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; color: #cbd5e1; font-size: 14px; margin-bottom: 4px;" id="npc-name-shylock"></div>
+                                    <div style="color: #e2e8f0; font-size: 13px; font-style: italic; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; border-left: 3px solid #64748b;" id="npc-greet-shylock"></div>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Content -->
+                            <div style="flex: 1; overflow-y: auto;">
+                                <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">* 장착 중인 장비를 제외한 인벤토리 아이템을 원가의 50%에 판매합니다.</p>
+                                <div id="shop-sell-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                </div>
                             </div>
                         </div>
 
                         <!-- 🛡️ 길드 뷰 -->
-                        <div id="town-guild" class="town-subview content-box" style="display: none;">
-                            <h3 style="color: #f8fafc; margin-bottom: 16px; font-size: 18px; text-align: center;">🛡️ 모험가 길드</h3>
-                            <div id="guild-menu">
-                                <p style="margin-bottom: 12px; font-size: 14px; color: #94a3b8;">전직할 직업을 선택하세요 (초보자 레벨 10 필요):</p>
-                                <div style="display: flex; gap: 8px;">
-                                    <button class="action-btn" id="btn-job-warrior" style="flex: 1; border-color: #ef4444; color: #fca5a5;">검사</button>
-                                    <button class="action-btn" id="btn-job-mage" style="flex: 1; border-color: #3b82f6; color: #93c5fd;">마법사</button>
-                                    <button class="action-btn" id="btn-job-archer" style="flex: 1; border-color: #10b981; color: #6ee7b7;">궁수</button>
+                        <div id="town-guild" class="town-subview content-box" style="display: none; border-color: #cbd5e1; flex-direction: column; height: 100%;">
+                            <h3 style="color: #f8fafc; margin-bottom: 16px; font-size: 18px; text-align: center;">🛡️ 시작의 방패 (모험가 길드)</h3>
+                            <!-- NPC Header -->
+                            <div style="background: rgba(0,0,0,0.4); border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-shrink: 0;">
+                                <div style="width: 60px; height: 60px; background: #1e293b; border-radius: 50%; border: 2px solid #cbd5e1; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px;">🧝‍♀️</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; color: #f8fafc; font-size: 14px; margin-bottom: 4px;" id="npc-name-elian"></div>
+                                    <div style="color: #e2e8f0; font-size: 13px; font-style: italic; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; border-left: 3px solid #cbd5e1;" id="npc-greet-elian"></div>
                                 </div>
-                                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #334155;">
-                                    <p style="margin-bottom: 12px; font-size: 14px; color: #94a3b8;">기타 서비스:</p>
-                                    <button class="action-btn" id="btn-stat-reset" style="width: 100%; border-color: #f59e0b; color: #fcd34d;">스탯 초기화 (무료)</button>
+                            </div>
+
+                            <!-- Scrollable Content -->
+                            <div style="flex: 1; overflow-y: auto;">
+                                <div id="guild-menu">
+                                    <p style="margin-bottom: 12px; font-size: 14px; color: #94a3b8;">전직할 직업을 선택하세요 (초보자 레벨 10 필요):</p>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="action-btn" id="btn-job-warrior" style="flex: 1; border-color: #ef4444; color: #fca5a5;">검사</button>
+                                        <button class="action-btn" id="btn-job-mage" style="flex: 1; border-color: #3b82f6; color: #93c5fd;">마법사</button>
+                                        <button class="action-btn" id="btn-job-archer" style="flex: 1; border-color: #10b981; color: #6ee7b7;">궁수</button>
+                                    </div>
+                                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed #334155;">
+                                        <p style="margin-bottom: 12px; font-size: 14px; color: #94a3b8;">의뢰 수주:</p>
+                                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                                            <button class="action-btn" id="btn-guild-daily" style="width: 100%; border-color: #3b82f6; color: #93c5fd;">일일 의뢰</button>
+                                            <button class="action-btn" id="btn-guild-weekly" style="width: 100%; border-color: #a855f7; color: #d8b4fe;">주간 의뢰</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- 📦 창고 뷰 -->
-                        <div id="town-warehouse" class="town-subview content-box" style="display: none; border-color: #f59e0b;">
-                            <h3 style="color: #f59e0b; margin-bottom: 16px; font-size: 18px; text-align: center;">📦 계정 창고</h3>
-                            <div id="warehouse-menu">
-                                <div style="display: flex; gap: 16px;">
-                                    <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px;">
-                                        <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px;">내 인벤토리 (클릭 시 보관)</h4>
-                                        <div id="warehouse-inventory-list" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
-                                    </div>
-                                    <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px;">
-                                        <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px;">계정 창고 (클릭 시 꺼내기)</h4>
-                                        <div id="warehouse-storage-list" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                        <div id="town-warehouse" class="town-subview content-box" style="display: none; border-color: #14b8a6; flex-direction: column; height: 100%;">
+                            <h3 style="color: #5eead4; margin-bottom: 16px; font-size: 18px; text-align: center;">📦 차원의 보관소</h3>
+                            <!-- NPC Header -->
+                            <div style="background: rgba(0,0,0,0.4); border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-shrink: 0;">
+                                <div style="width: 60px; height: 60px; background: #1e293b; border-radius: 50%; border: 2px solid #14b8a6; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 28px;">🥱</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; color: #5eead4; font-size: 14px; margin-bottom: 4px;" id="npc-name-lumina"></div>
+                                    <div style="color: #e2e8f0; font-size: 13px; font-style: italic; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; border-left: 3px solid #14b8a6;" id="npc-greet-lumina"></div>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Content -->
+                            <div style="flex: 1; overflow-y: auto;">
+                                <div id="warehouse-menu">
+                                    <div style="display: flex; gap: 16px;">
+                                        <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                                            <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px; flex-shrink: 0;">내 인벤토리 (클릭 시 보관)</h4>
+                                            <div id="warehouse-inventory-list" style="flex: 1; min-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                                        </div>
+                                        <div style="flex: 1; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 12px; display: flex; flex-direction: column;">
+                                            <h4 style="color: #94a3b8; font-size: 14px; margin-bottom: 8px; flex-shrink: 0;">계정 창고 (클릭 시 꺼내기)</h4>
+                                            <div id="warehouse-storage-list" style="flex: 1; min-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -197,33 +267,43 @@
                     <h2>필드</h2>
                     
                     <div id="field-idle" class="content-box">
-                        <p>탐험할 필드를 선택하세요.</p>
+                        
+                        <!-- 사냥 설정 패널 -->
+                        <details style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 8px; margin-bottom: 24px;">
+                            <summary style="color: #cbd5e1; font-size: 14px; font-weight: bold; padding: 12px 16px; cursor: pointer; user-select: none; list-style: none;">
+                                ⚙️ 사냥 설정 <span style="font-size: 11px; color: #64748b; font-weight: normal; margin-left: 8px;">(클릭하여 펼치기)</span>
+                            </summary>
+                            
+                            <div style="padding: 0 16px 16px 16px; border-top: 1px dashed #334155; padding-top: 16px; display: flex; flex-direction: column; gap: 12px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="color: #cbd5e1; font-size: 14px; font-weight: 600;">자동 전투 모드</span>
+                                    <select id="sel-auto-combat" style="background: #1e293b; color: #f8fafc; border: 1px solid #475569; padding: 6px 12px; border-radius: 6px; font-size: 13px; outline: none; cursor: pointer;">
+                                        <option value="manual">수동 전투</option>
+                                        <option value="once">1회 자동 전투</option>
+                                        <option value="repeat">반복 자동 전투</option>
+                                    </select>
+                                </div>
+                                
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="color: #cbd5e1; font-size: 14px; font-weight: 600;">자동 물약 사용</span>
+                                    <div style="display: flex; gap: 8px; font-size: 12px; color: #94a3b8; align-items: center;">
+                                        <div style="display: flex; align-items: center; gap: 6px; background: #1e293b; padding: 4px 8px; border-radius: 6px; border: 1px solid #475569;">
+                                            <span style="color: #ef4444; font-weight: bold;">HP ≤</span>
+                                            <input type="number" id="auto-potion-hp" value="30" min="0" max="100" style="width: 40px; background: transparent; color: #f8fafc; border: none; font-size: 13px; outline: none; text-align: center;">%
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px; background: #1e293b; padding: 4px 8px; border-radius: 6px; border: 1px solid #475569;">
+                                            <span style="color: #3b82f6; font-weight: bold;">MP ≤</span>
+                                            <input type="number" id="auto-potion-mp" value="20" min="0" max="100" style="width: 40px; background: transparent; color: #f8fafc; border: none; font-size: 13px; outline: none; text-align: center;">%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <p style="margin-bottom: 12px; font-size: 14px; color: #94a3b8;">탐험할 필드를 선택하세요:</p>
                         
                         <div id="field-list-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
                             <!-- 동적 필드 리스트 렌더링 -->
-                        </div>
-
-                        <div style="padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-                            <span style="color: #cbd5e1; font-size: 14px; font-weight: 600;">자동 전투 모드</span>
-                            <select id="sel-auto-combat" style="background: #1e293b; color: #f8fafc; border: 1px solid #475569; padding: 6px 12px; border-radius: 6px; font-size: 13px; outline: none;">
-                                <option value="manual">수동 전투</option>
-                                <option value="once">1회 자동 전투</option>
-                                <option value="repeat">반복 자동 전투</option>
-                            </select>
-                        </div>
-
-                        <div style="padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-                            <span style="color: #cbd5e1; font-size: 14px; font-weight: 600;">자동 물약 사용</span>
-                            <div style="display: flex; gap: 8px; font-size: 12px; color: #94a3b8; align-items: center;">
-                                <div style="display: flex; align-items: center; gap: 4px;">
-                                    <span style="color: #ef4444;">HP ≤</span>
-                                    <input type="number" id="auto-potion-hp" value="30" min="0" max="100" style="width: 46px; background: #1e293b; color: #f8fafc; border: 1px solid #475569; padding: 4px; border-radius: 4px; font-size: 12px; outline: none; text-align: center;">%
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 4px;">
-                                    <span style="color: #3b82f6;">MP ≤</span>
-                                    <input type="number" id="auto-potion-mp" value="20" min="0" max="100" style="width: 46px; background: #1e293b; color: #f8fafc; border: 1px solid #475569; padding: 4px; border-radius: 4px; font-size: 12px; outline: none; text-align: center;">%
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -247,9 +327,11 @@
                                     <span style="color: #3b82f6; font-weight: bold;">MP</span>
                                     <span id="combat-player-mp-text" style="color: #cbd5e1;">0/0</span>
                                 </div>
+
                                 <div style="width: 100%; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
                                     <div id="combat-player-mp-bar" style="width: 100%; height: 100%; background: #3b82f6; transition: width 0.3s;"></div>
                                 </div>
+                                <div id="combat-player-buffs" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; min-height: 20px;"></div>
                             </div>
                             
                             <!-- 몬스터 상태 -->
@@ -259,9 +341,11 @@
                                     <span style="color: #ef4444; font-weight: bold;">HP</span>
                                     <span id="combat-monster-hp-text" style="color: #cbd5e1;">0/0</span>
                                 </div>
+
                                 <div style="width: 100%; height: 8px; background: #334155; border-radius: 4px; overflow: hidden;">
                                     <div id="combat-monster-hp-bar" style="width: 100%; height: 100%; background: #ef4444; transition: width 0.3s;"></div>
                                 </div>
+                                <div id="combat-monster-buffs" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; min-height: 20px;"></div>
                             </div>
                         </div>
 
@@ -271,7 +355,8 @@
 
                         <div class="action-buttons">
                             <button class="action-btn danger" id="btn-attack">공격하기 ⚔️</button>
-                            <button class="action-btn" id="btn-skill" style="border-color: #a855f7; color: #d8b4fe;">스킬 🪄</button>
+                            <button class="action-btn" id="btn-skill" style="border-color: #a855f7; color: #d8b4fe;">스킬 ✨</button>
+                            <button class="action-btn" id="btn-item" style="border-color: #10b981; color: #6ee7b7;">소모품 💊</button>
                             <button class="action-btn" id="btn-flee">도망치기 🏃</button>
                             <button class="action-btn danger" id="btn-stop-auto" style="display: none; border-color: #ef4444; color: #fca5a5;">마을로 귀환 (자동 사냥 중단)</button>
                         </div>
@@ -280,6 +365,13 @@
                         <div id="combat-skill-menu" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #334155;">
                             <p style="margin-bottom: 8px; font-size: 13px; color: #94a3b8;">사용할 스킬을 선택하세요:</p>
                             <div id="combat-skill-list" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            </div>
+                        </div>
+                        
+                        <!-- 소모품 선택 영역 -->
+                        <div id="combat-item-menu" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #10b981;">
+                            <p style="margin-bottom: 8px; font-size: 13px; color: #6ee7b7;">사용할 소모품을 선택하세요 (턴당 1회):</p>
+                            <div id="combat-item-list" style="display: flex; gap: 8px; flex-wrap: wrap;">
                             </div>
                         </div>
                     </div>
@@ -324,22 +416,76 @@
             </main>
         </div>
     </div>
+    <!-- 퀘스트 모달 -->
+    <div id="quest-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; width: 90%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <div style="padding: 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="quest-modal-title" style="color: #f8fafc; margin: 0; font-size: 18px;">의뢰 수주</h3>
+                <button id="btn-quest-close" style="background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            
+            <div style="padding: 12px; background: rgba(15,23,42,0.5); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;">
+                <span style="font-size: 13px; color: #cbd5e1;">현재 활성화된 의뢰: <span id="quest-active-count">0</span> / 3</span>
+                <label style="font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="checkbox" id="cb-quest-show-low" style="accent-color: #3b82f6;"> 수준 낮은 의뢰 보기
+                </label>
+            </div>
+            
+            <div id="quest-list-container" style="padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px;">
+                <!-- 퀘스트 목록 렌더링 -->
+            </div>
+        </div>
+    </div>
     
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
     <!-- Data DB -->
-    <script src="js/data/items.js"></script>
+    <script src="js/data/items.js?v=2"></script>
     <script src="js/data/skills.js"></script>
-    <script src="js/data/jobs.js"></script>
+    <script src="js/data/jobs.js?v=2"></script>
     <script src="js/data/monsters.js"></script>
     <script src="js/data/fields.js"></script>
     <script src="js/data/shops.js"></script>
-    <script src="js/data/exp.js"></script>
+    <script src="js/data/exp.js?v=7"></script>
     <script src="js/data/drops.js"></script>
+    <script src="js/data/quests.js"></script>
     
     <!-- Core & Game Logic -->
+    <script src="js/core/npc.js"></script>
+    <script src="js/core/firebase-init.js"></script>
     <script src="js/core/db.js"></script>
-    <script src="js/core/models.js"></script>
-    <script src="js/game/state.js"></script>
-    <script src="js/game/engine.js"></script>
-    <script src="js/game/ui.js"></script>
+    <script src="js/core/models.js?v=4"></script>
+    <script src="js/game/state.js?v=2"></script>
+    <script src="js/game/engine.js?v=5"></script>
+    <script src="js/game/ui.js?v=15"></script>
+
+    <!-- Custom Toast & Notification UI -->
+    <div id="toast-container" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none;"></div>
+    
+    <div id="custom-confirm-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center;">
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 24px; max-width: 320px; width: 90%; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <p id="custom-confirm-msg" style="color: #f8fafc; font-size: 15px; margin-bottom: 24px; line-height: 1.5;"></p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button class="action-btn" id="btn-confirm-yes" style="flex: 1; border-color: #3b82f6; color: #93c5fd;">확인</button>
+                <button class="action-btn" id="btn-confirm-no" style="flex: 1; border-color: #64748b; color: #cbd5e1;">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-center-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9998;">
+        <div style="position: absolute; top: 60px; right: 24px; background: #0f172a; border: 1px solid #3b82f6; border-radius: 8px; width: 300px; max-height: 400px; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <div style="padding: 12px 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="color: #f8fafc; font-size: 14px; margin: 0;">알림 센터</h3>
+                <button id="btn-close-notif" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 16px;">✕</button>
+            </div>
+            <div id="notification-list" style="padding: 12px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: #cbd5e1;">
+                <div style="text-align: center; color: #64748b; padding: 20px 0;">최근 알림이 없습니다.</div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

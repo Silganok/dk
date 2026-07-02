@@ -1,5 +1,6 @@
 const JOB_DB = {
     "초보자": {
+        tier: 0,
         reqLevel: 1,
         reqJobLevel: 1,
         reqJob: null,
@@ -9,6 +10,7 @@ const JOB_DB = {
         desc: "이제 막 모험을 시작한 초보자입니다."
     },
     "검사": {
+        tier: 1,
         reqLevel: 10,
         reqJobLevel: 10,
         reqJob: "초보자",
@@ -18,6 +20,7 @@ const JOB_DB = {
         desc: "강인한 체력과 힘을 바탕으로 적을 물리치는 근접 전투의 전문가입니다."
     },
     "마법사": {
+        tier: 1,
         reqLevel: 10,
         reqJobLevel: 10,
         reqJob: "초보자",
@@ -27,6 +30,7 @@ const JOB_DB = {
         desc: "마법을 다루어 원거리에서 강력한 공격을 퍼붓는 직업입니다."
     },
     "궁수": {
+        tier: 1,
         reqLevel: 10,
         reqJobLevel: 10,
         reqJob: "초보자",

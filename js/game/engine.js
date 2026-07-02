@@ -46,7 +46,7 @@ function addExp(baseAmount, jobAmount = 0) {
     
     if (playerState.jobLevel < maxJobLevel) {
         let newJobExp = (playerState.jobExp || 0) + jobAmount;
-        let requiredJobExp = EXP_DB.getRequiredJobExp(playerState.jobLevel);
+        let requiredJobExp = EXP_DB.getRequiredJobExp(playerState.jobLevel, playerState.job);
 
         while (newJobExp >= requiredJobExp) {
             if (playerState.jobLevel >= maxJobLevel) {
@@ -56,11 +56,11 @@ function addExp(baseAmount, jobAmount = 0) {
             newJobExp -= requiredJobExp;
             playerState.jobLevel += 1;
             jobLevelUp = true;
-            requiredJobExp = EXP_DB.getRequiredJobExp(playerState.jobLevel);
+            requiredJobExp = EXP_DB.getRequiredJobExp(playerState.jobLevel, playerState.job);
         }
         playerState.jobExp = newJobExp;
     } else {
-        playerState.jobExp = EXP_DB.getRequiredJobExp(maxJobLevel);
+        playerState.jobExp = EXP_DB.getRequiredJobExp(maxJobLevel, playerState.job);
     }
 
     if (baseLevelUp || jobLevelUp) {
@@ -70,7 +70,12 @@ function addExp(baseAmount, jobAmount = 0) {
         
         playerState.currentHp = playerState.maxHp;
         playerState.currentMp = playerState.maxMp;
-        alert(msg);
+        window.gameAlert(msg, 'success', true);
+        
+        // 레벨업 시 상태 강제 저장 및 서버 백업
+        if (typeof updatePlayerState === 'function') updatePlayerState({});
+        if (typeof DB !== 'undefined' && DB.backupToServer) DB.backupToServer();
+        
         if (typeof renderPlayerStats === 'function') renderPlayerStats();
     }
 }
@@ -176,8 +181,22 @@ function executePlayerAction() {
     window.combatTurnCount++;
     handleAutoPotion();
     
-    if (window.combatTurnCount > 100) {
-        if (typeof addCombatLog === 'function') addCombatLog("100턴이 경과하여 전투에서 패배했습니다. (체력 1로 마을 귀환)", "#ef4444");
+    // 영구 상태이상(독) 체크
+    if (playerState.statusEffects && playerState.statusEffects["Poison"]) {
+        let poisonDmg = Math.max(1, Math.floor(playerState.maxHp * 0.02));
+        playerState.currentHp -= poisonDmg;
+        if (typeof addCombatLog === 'function') addCombatLog(`[맹독] 중독 상태로 인해 ${poisonDmg}의 피해를 입었습니다!`, "#10b981");
+        if (playerState.currentHp <= 0) {
+            if (typeof addCombatLog === 'function') addCombatLog("독으로 인해 쓰러졌습니다...", "#ef4444");
+            setTimeout(() => {
+                playerState.currentHp = 1;
+                if (typeof endCombat === 'function') { endCombat(); if (typeof switchTab === 'function') switchTab('town'); }
+            }, 1500);
+            return;
+        }
+    }
+
+    if (window.combatTurnCount > 100) {        if (typeof addCombatLog === 'function') addCombatLog("100턴이 경과하여 전투에서 패배했습니다. (체력 1로 마을 귀환)", "#ef4444");
         setTimeout(() => {
             playerState.currentHp = 1;
             if (typeof endCombat === 'function') {
@@ -278,7 +297,14 @@ function executeAttacks(attacker, totalAttacks, callback) {
 }
 
 function playerSingleAttack() {
-    const skill = getAutoSkill();
+    let skill = null;
+    if (window.manualSkill) {
+        skill = window.manualSkill;
+        window.manualSkill = null; // Consume it so next attack in double attack is normal
+    } else if (window.isAutoCombatActive) {
+        skill = getAutoSkill();
+    }
+    
     let skillData = null;
     let skillLevel = 1;
 
@@ -293,7 +319,6 @@ function playerSingleAttack() {
     }
 
     let pAcc = playerState.accuracy;
-    if (playerState.mealBuff && playerState.mealBuff.stat === 'acc_eva') pAcc += playerState.mealBuff.amount;
     if (window.combatBuffs.player["사이트"] > 0) pAcc = 9999;
     
     // 공격 명중 판정 (버프 스킬은 회피 판정 안 함)
@@ -338,16 +363,16 @@ function playerSingleAttack() {
     }
 
     // 몬스터 방어력 계산 (프로보크 시 0)
-    let mDefense = window.combatBuffs.monster["프로보크"] > 0 ? 0 : currentMonster.defense;
+    let mDefense = currentMonster.defense;
+    if (window.combatBuffs.monster["단단한 피부"] > 0) mDefense = Math.floor(mDefense * 1.5);
+    if (window.combatBuffs.monster["프로보크"] > 0) mDefense = 0;
 
     for (let i = 0; i < hitsCount; i++) {
         let rawDamage = (skillData && skillData.element && skillData.element !== "무") ? playerState.magicAttack : playerState.meleeAttack;
-        if (playerState.mealBuff && playerState.mealBuff.stat === 'atk') rawDamage *= (1 + playerState.mealBuff.amount);
         
         // 궁수의 경우 원거리 타격 처리? (간단히 무기가 활이면 rangedAttack 사용)
         if (playerState.equipment.weapon && playerState.equipment.weapon.subType === "장궁" && (!skillData || skillData.element === "무")) {
             rawDamage = playerState.rangedAttack;
-            if (playerState.mealBuff && playerState.mealBuff.stat === 'atk') rawDamage *= (1 + playerState.mealBuff.amount);
         }
 
         if (skillData && skillData.getMultiplier) {
@@ -356,6 +381,14 @@ function playerSingleAttack() {
         
         rawDamage *= getPlayerDamageVarianceMultiplier();
         rawDamage *= elementMult;
+        
+        if (skillData && skillData.element && skillData.element !== "무") {
+            if (currentMonster.skills) {
+                let mResistSkill = currentMonster.skills.find(s => s.id === "PASSIVE_MRESIST");
+                if (mResistSkill) rawDamage *= 0.7; // 30% reduction
+            }
+        }
+
 
         let critRoll = (Math.random() * 100) < pCritChance;
         if (critRoll) {
@@ -368,7 +401,23 @@ function playerSingleAttack() {
             }
         }
 
-        let finalDmg = Math.max(1, Math.floor(rawDamage - mDefense));
+        let finalDmg;
+        // 마법 공격일 경우
+        if (skillData && skillData.element && skillData.element !== "무") {
+            let mMagicDef = currentMonster.magicDefense || Math.floor(currentMonster.defense * 0.8);
+            let reductionRatio = Math.min(0.90, mMagicDef / (mMagicDef + 50));
+            let midDmg = rawDamage * (1 - reductionRatio);
+            finalDmg = Math.max(1, Math.floor(midDmg - Math.floor(mMagicDef * 0.5)));
+        } else {
+            // 물리 공격
+            let pResist = 0;
+            if (currentMonster.skills) {
+                let pResistSkill = currentMonster.skills.find(s => s.id === "PASSIVE_STEEL");
+                if (pResistSkill) pResist = 30; // 30% reduction
+            }
+            if (pResist > 0) rawDamage *= (1 - (pResist/100));
+            finalDmg = Math.max(1, Math.floor(rawDamage - mDefense));
+        }
         currentMonster.hp -= finalDmg;
         hitDamages.push(finalDmg);
     }
@@ -398,13 +447,63 @@ function playerSingleAttack() {
 
 function monsterSingleAttack() {
     let pEvasion = playerState.evasion;
-    if (playerState.mealBuff && playerState.mealBuff.stat === 'acc_eva') pEvasion += playerState.mealBuff.amount;
     if (window.combatBuffs.player["세이프티 월"] > 0) {
         const swLevel = playerState.skills["세이프티 월"] || 1;
         pEvasion += Math.min(90, 40 + (swLevel * 5)); 
     }
     
-    if (!calculateHit(currentMonster.accuracy, pEvasion)) {
+    let isCharging = window.combatBuffs.monster["차지"] > 0;
+    
+    let selectedSkill = null;
+    let skillAlias = "";
+    
+    if (isCharging) {
+        window.combatBuffs.monster["차지"] = 0;
+        selectedSkill = MONSTER_SKILL_DB["CHARGE_ATTACK"];
+        skillAlias = currentMonster.skills.find(s => s.id === "CHARGE_ATTACK").alias;
+    } else {
+        // 스킬 확률 판정
+        let useSkill = Math.random() < 0.25; // 25% 확률로 스킬 사용
+        if (useSkill && currentMonster.skills && typeof MONSTER_SKILL_DB !== 'undefined') {
+            let activeSkills = currentMonster.skills.filter(s => MONSTER_SKILL_DB[s.id].type !== "passive");
+            if (activeSkills.length > 0) {
+                let sObj = activeSkills[Math.floor(Math.random() * activeSkills.length)];
+                selectedSkill = MONSTER_SKILL_DB[sObj.id];
+                skillAlias = sObj.alias;
+                
+                // 특수 조건 필터
+                if (selectedSkill.type === "heal" && currentMonster.hp > currentMonster.maxHp * 0.7) {
+                    selectedSkill = null; // 체력이 높을땐 힐 취소
+                }
+            }
+        }
+    }
+    
+    if (selectedSkill) {
+        if (typeof addCombatLog === 'function') addCombatLog(`몬스터가 [${skillAlias}] 을(를) 사용했습니다!`, "#fcd34d");
+        
+        if (selectedSkill.type === "heal") {
+            let healAmount = Math.floor(currentMonster.maxHp * (selectedSkill.healPercent / 100));
+            currentMonster.hp = Math.min(currentMonster.maxHp, currentMonster.hp + healAmount);
+            if (typeof addCombatLog === 'function') addCombatLog(selectedSkill.message + ` (${healAmount} 회복)`, "#34d399");
+            if (typeof updateCombatUI === 'function') updateCombatUI();
+            return;
+        }
+        
+        if (selectedSkill.type === "buff") {
+            window.combatBuffs.monster[selectedSkill.name] = selectedSkill.duration;
+            if (typeof addCombatLog === 'function') addCombatLog(selectedSkill.message, "#60a5fa");
+            return;
+        }
+        
+        if (selectedSkill.id === "CHARGE_ATTACK" && !isCharging) {
+            window.combatBuffs.monster["차지"] = 2; // 다음 턴에 발사
+            if (typeof addCombatLog === 'function') addCombatLog("몬스터가 기를 모으기 시작했습니다!", "#ef4444");
+            return;
+        }
+    }
+
+    if (!calculateHit(currentMonster.accuracy, pEvasion) && (!selectedSkill || selectedSkill.type !== "magic")) {
         if (typeof addCombatLog === 'function') addCombatLog("몬스터의 공격을 회피했습니다!", "#10b981");
         return;
     }
@@ -412,26 +511,78 @@ function monsterSingleAttack() {
     let mAttack = currentMonster.attack;
     if (window.combatBuffs.monster["프로보크"] > 0) mAttack *= 1.5;
 
-    let rawDamage = mAttack * (0.85 + Math.random() * 0.30);
-    let isCrit = calculateCrit(currentMonster.luk);
-    if (isCrit) rawDamage *= 1.5;
+    let hitsCount = selectedSkill && selectedSkill.hits ? selectedSkill.hits : 1;
+    let hitDamages = [];
     
-    let pDef = playerState.defense;
-    if (window.combatBuffs.player["인듀어"] > 0) {
-        const endureLevel = playerState.skills["인듀어"] || 1;
-        pDef += endureLevel * 3;
+    for (let i = 0; i < hitsCount; i++) {
+        let rawDamage = mAttack * (0.85 + Math.random() * 0.30);
+        let isCrit = calculateCrit(currentMonster.luk);
+        if (isCrit) rawDamage *= 1.5;
+        
+        if (selectedSkill && selectedSkill.multiplier) {
+            rawDamage *= selectedSkill.multiplier;
+        }
+        
+        let finalDamage = 0;
+        
+        if (selectedSkill && selectedSkill.type === "magic") {
+            // 마법 방어력 연산
+            let mElement = selectedSkill.element || "무";
+            let pElement = playerState.equipment.body && playerState.equipment.body.element ? playerState.equipment.body.element : "무";
+            let eleMult = getElementMultiplier(mElement, pElement);
+            rawDamage *= eleMult;
+            
+            let eqMDef = playerState.equipMagicDefense || 0;
+            let iDef = playerState.intDefense || 0;
+            
+            let reductionRatio = Math.min(0.90, eqMDef / (eqMDef + 50));
+            let midDamage = rawDamage * (1 - reductionRatio);
+            finalDamage = Math.max(1, Math.floor(midDamage - iDef));
+        } else {
+            // 물리 방어력 연산
+            let eqDef = playerState.equipDefense || 0;
+            let vDef = playerState.vitDefense || 0;
+            
+            if (window.combatBuffs.player["인듀어"] > 0) {
+                const endureLevel = playerState.skills["인듀어"] || 1;
+                vDef += endureLevel * 3;
+            }
+            if (window.combatBuffs.monster["단단한 피부"] > 0) {
+                // 단단한 피부는 몬스터 방어력 버프인데 플레이어가 때릴때 처리해야함. 여기선 안함
+            }
+
+            let reductionRatio = Math.min(0.90, eqDef / (eqDef + 50));
+            let midDamage = rawDamage * (1 - reductionRatio);
+            finalDamage = Math.max(1, Math.floor(midDamage - vDef));
+        }
+        
+        playerState.currentHp = Math.max(0, playerState.currentHp - finalDamage);
+        hitDamages.push(finalDamage);
     }
 
-    let finalDamage = Math.max(1, Math.floor(rawDamage - pDef));
-    playerState.currentHp = Math.max(0, playerState.currentHp - finalDamage);
-
     if (typeof updateCombatUI === 'function') updateCombatUI();
-    if (typeof addCombatLog === 'function') addCombatLog(`몬스터의 공격! 당신은 ${finalDamage}의 피해를 입었습니다.`, isCrit ? "crit-text" : "#ef4444");
+    let dmgStr = hitDamages.join(', ');
+    if (typeof addCombatLog === 'function') {
+        let msg = selectedSkill ? selectedSkill.message : "몬스터의 공격!";
+        addCombatLog(`${msg} 당신은 ${dmgStr}의 피해를 입었습니다.`, hitDamages.length > 1 ? "#ef4444" : "#ef4444");
+    }
+    
+    // 추가 효과 판정
+    if (selectedSkill && selectedSkill.type === "poison") {
+        if (!playerState.statusEffects) playerState.statusEffects = {};
+        playerState.statusEffects["Poison"] = true;
+        if (typeof addCombatLog === 'function') addCombatLog("맹독에 중독되었습니다! 지속적인 피해를 입습니다.", "#10b981");
+    }
+    if (selectedSkill && selectedSkill.stunChance) {
+        if (Math.random() * 100 < selectedSkill.stunChance) {
+            window.combatBuffs.player["스턴"] = 1;
+            if (typeof addCombatLog === 'function') addCombatLog("강력한 일격에 기절했습니다!", "#ef4444");
+        }
+    }
 
     // 화이어 월 반사 데미지 체크
-    if (window.combatBuffs.player["화이어 월"] > 0 && currentMonster.hp > 0) {
+    if (window.combatBuffs.player["화이어 월"] > 0 && currentMonster.hp > 0 && (!selectedSkill || selectedSkill.type !== "magic" && selectedSkill.type !== "ranged")) {
         let reflectDmg = Math.max(1, Math.floor(playerState.magicAttack * 0.5));
-        
         let mElem = currentMonster.element || "무";
         let eleMult = getElementMultiplier("화", mElem);
         reflectDmg = Math.floor(reflectDmg * eleMult);
@@ -445,38 +596,115 @@ function monsterSingleAttack() {
 }
 
 function handleMonsterDeath() {
+    let expPenalty = 1.0;
+    let dropPenalty = 1.0;
+    
+    if (typeof FIELD_DB !== 'undefined' && window.currentFieldId) {
+        const fieldData = FIELD_DB[window.currentFieldId];
+        if (fieldData) {
+            let maxBracket = fieldData.reqLevel === 1 ? 9 : fieldData.reqLevel + 9;
+            let diff = playerState.level - maxBracket;
+            if (diff > 0) {
+                let penaltyPercent = diff * 10;
+                
+                let expP = 100 - penaltyPercent;
+                if (expP < 10) expP = 10;
+                expPenalty = expP / 100.0;
+                
+                let dropP = 100 - penaltyPercent;
+                if (dropP < 50) dropP = 50;
+                dropPenalty = dropP / 100.0;
+            }
+        }
+    }
+
     let dropMsg = "";
     if (currentMonster.dropTable && typeof DROP_DB !== 'undefined' && DROP_DB[currentMonster.dropTable]) {
         const drops = DROP_DB[currentMonster.dropTable];
         drops.forEach(drop => {
-            if ((Math.random() * 100) < drop.chance) {
+            if ((Math.random() * 100) < (drop.chance * dropPenalty)) {
                 const item = typeof ITEM_DB !== 'undefined' ? ITEM_DB[drop.itemId] : null;
                 if (item) {
-                    playerState.inventory.push(JSON.parse(JSON.stringify(item)));
+                    if (typeof window.gainItem === 'function') {
+                        window.gainItem(drop.itemId, 1);
+                    } else {
+                        playerState.inventory.push({ id: drop.itemId, count: 1 });
+                    }
                     dropMsg += `\n[${item.name}]을(를) 획득했습니다!`;
                 }
             }
         });
     }
 
+    let goldBonus = 1 + (playerState.getMealBonus ? playerState.getMealBonus('goldMultBonus') : 0);
+    let finalGold = Math.floor(currentMonster.gold * goldBonus * dropPenalty);
+    
+    let expBonus = 1 + (playerState.getMealBonus ? playerState.getMealBonus('expMultBonus') : 0);
+    let finalBaseExp = Math.floor(currentMonster.exp * expBonus * expPenalty);
+    let finalJobExp = Math.floor((currentMonster.jobExp || 0) * expBonus * expPenalty);
+
     if (typeof addCombatLog === 'function') {
-        addCombatLog(`몬스터 처치! Base EXP ${currentMonster.exp}, Job EXP ${currentMonster.jobExp || 0}, 골드 ${currentMonster.gold}G 획득${dropMsg}`, "#34d399");
+        let penaltyMsg = "";
+        if (expPenalty < 1.0) {
+            penaltyMsg = ` (패널티 - EXP: ${Math.round(expPenalty*100)}%, 드랍: ${Math.round(dropPenalty*100)}%)`;
+        }
+        addCombatLog(`몬스터 처치! Base EXP ${finalBaseExp}, Job EXP ${finalJobExp}, 골드 ${finalGold}G 획득${penaltyMsg}${dropMsg}`, "#34d399");
     }
     
-    // 식사 버프 차감
-    if (playerState.mealBuff && playerState.mealBuff.count > 0) {
-        playerState.mealBuff.count--;
-        if (playerState.mealBuff.count <= 0) {
-            playerState.mealBuff = null;
-            if (typeof addCombatLog === 'function') addCombatLog("식사 버프의 효과가 모두 소모되었습니다.", "#94a3b8");
+    // 퀘스트 진행(토벌) 체크
+    if (playerState.quests && playerState.quests.active && playerState.quests.active.length > 0) {
+        let questUpdated = false;
+        playerState.quests.active.forEach(q => {
+            const qData = typeof QUEST_DB !== 'undefined' ? QUEST_DB[q.id] : null;
+            if (qData && qData.type === 'hunt' && qData.target === currentMonster.name && !q.isComplete) {
+                q.progress++;
+                if (q.progress >= qData.requiredCount) {
+                    q.progress = qData.requiredCount;
+                    q.isComplete = true;
+                    if (typeof addCombatLog === 'function') {
+                        addCombatLog(`[퀘스트] '${qData.name}' 목표 달성! 길드로 돌아가 보고하세요.`, "#fcd34d");
+                    }
+                }
+                questUpdated = true;
+            }
+        });
+        if (questUpdated) {
+            updatePlayerState({ quests: playerState.quests }); // trigger save
         }
     }
     
-    updatePlayerState({ gold: playerState.gold + currentMonster.gold });
+    // 식사 버프 차감
+    let buffs = [];
+    if (playerState.mealBuffs) {
+        if (playerState.mealBuffs.main) buffs.push(playerState.mealBuffs.main);
+        if (playerState.mealBuffs.dessert) buffs.push(playerState.mealBuffs.dessert);
+    } else if (playerState.mealBuff) {
+        buffs.push(playerState.mealBuff);
+    }
+
+    let mealExpired = false;
+    for (const buff of buffs) {
+        if (buff && buff.remainingBattles > 0) {
+            buff.remainingBattles--;
+            if (buff.remainingBattles <= 0) {
+                if (playerState.mealBuffs) {
+                    if (playerState.mealBuffs.main === buff) playerState.mealBuffs.main = null;
+                    if (playerState.mealBuffs.dessert === buff) playerState.mealBuffs.dessert = null;
+                } else {
+                    playerState.mealBuff = null;
+                }
+                mealExpired = true;
+            }
+        }
+    }
     
-    let expBonus = 1;
-    if (playerState.mealBuff && playerState.mealBuff.stat === 'exp') expBonus += playerState.mealBuff.amount;
-    addExp(Math.floor(currentMonster.exp * expBonus), Math.floor((currentMonster.jobExp || 0) * expBonus));
+    if (mealExpired && typeof addCombatLog === 'function') {
+        addCombatLog("식사 버프의 효과가 모두 소모되었습니다.", "#94a3b8");
+    }
+    
+    
+    updatePlayerState({ gold: playerState.gold + finalGold });
+    addExp(finalBaseExp, finalJobExp);
     
     // 전투 종료 시 초기화
     window.combatTurnCount = 0;
@@ -489,7 +717,7 @@ function handleMonsterDeath() {
                 if (fieldData && fieldData.requireItem) {
                     const hasKey = playerState.inventory.some(i => i && i.name === fieldData.requireItem);
                     if (!hasKey) {
-                        alert("열쇠가 부족하여 반복 자동 사냥을 종료합니다.");
+                        window.gameAlert("열쇠가 부족하여 반복 자동 사냥을 종료합니다.");
                         window.isAutoCombatActive = false;
                         if (typeof renderFieldList === 'function') renderFieldList();
                         return;
@@ -504,6 +732,7 @@ function handleMonsterDeath() {
 }
 
 function endCombatTurn() {
+    window.itemUsedThisTurn = false;
     // 쿨타임 감소
     if (window.skillCooldowns) {
         for(let skill in window.skillCooldowns) {

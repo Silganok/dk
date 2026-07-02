@@ -3,7 +3,7 @@ const DROP_DB = {
     "포링": [ { itemId: "젤로피", chance: 70 }, { itemId: "빈 병", chance: 30 }, { itemId: "단검", chance: 2 } ],
     "파브르": [ { itemId: "파브르의 털", chance: 80 } ],
     "루나틱": [ { itemId: "토끼풀", chance: 80 } ],
-    "엔젤링": [ { itemId: "신성한 깃털", chance: 100 }, { itemId: "초보자의 옷", chance: 20 } ],
+    "엔젤링": [ { itemId: "신성한 깃털", chance: 100 }, { itemId: "천옷", chance: 20 } ],
 
     // Lv 10 Field
     "로커": [ { itemId: "메뚜기의 뒷다리", chance: 80 } ],

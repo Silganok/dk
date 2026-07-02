@@ -37,32 +37,54 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCharacterSlots();
     }
 
-    // 로그인 로직
+    // Firebase 인증 상태 리스너
+    window.auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            // 로그인 상태
+            currentAccountId = user.uid;
+            sessionStorage.setItem('lastAccount', currentAccountId);
+            
+            // 로컬에 계정이 없으면 일단 빈 계정 생성 (UI 렌더링을 위해)
+            if (!DB.getAccount(currentAccountId)) {
+                DB.createAccount(currentAccountId);
+            }
+            
+            // 화면을 먼저 전환하고 슬롯을 그립니다 (무한 로딩 방지)
+            renderCharacterSlots();
+            loginView.style.display = 'none';
+            charSelectView.style.display = 'block';
+
+            // 백그라운드에서 서버 데이터 로드 시도
+            await DB.loadFromServer();
+            
+            // 로드 완료 후 화면 다시 갱신
+            renderCharacterSlots();
+        } else {
+            // 로그아웃 상태
+            currentAccountId = null;
+            charSelectView.style.display = 'none';
+            loginView.style.display = 'block';
+            sessionStorage.removeItem('lastAccount');
+            sessionStorage.removeItem('lastSlot');
+        }
+    });
+
+    // 구글 로그인 로직
     btnLogin.addEventListener('click', () => {
-        const accId = inputAccountId.value.trim();
-        if (!accId) {
-            alert('계정 아이디를 입력하세요.');
-            return;
-        }
-        if (!DB.getAccount(accId)) {
-            DB.createAccount(accId);
-            alert('새로운 계정이 생성되었습니다!');
-        }
-        currentAccountId = accId;
-        sessionStorage.setItem('lastAccount', accId);
-        renderCharacterSlots();
-        loginView.style.display = 'none';
-        charSelectView.style.display = 'block';
+        const provider = new firebase.auth.GoogleAuthProvider();
+        window.auth.signInWithPopup(provider).catch((error) => {
+            console.error("로그인 에러:", error);
+            window.gameAlert("로그인에 실패했습니다.");
+        });
     });
 
     // 로그아웃 로직
-    btnLogout.addEventListener('click', () => {
-        currentAccountId = null;
-        charSelectView.style.display = 'none';
-        loginView.style.display = 'block';
-        inputAccountId.value = '';
-        sessionStorage.removeItem('lastAccount');
-        sessionStorage.removeItem('lastSlot');
+    btnLogout.addEventListener('click', async () => {
+        // 로그아웃 전 백업 시도
+        if (currentAccountId) {
+            await DB.backupToServer();
+        }
+        window.auth.signOut();
     });
 
     // 캐릭터 슬롯 렌더링
@@ -72,7 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const account = DB.getAccount(currentAccountId);
         if (!account) return;
 
-        account.characters.forEach((char, index) => {
+        const chars = account.characters || [];
+        for (let index = 0; index < 3; index++) {
+            const char = chars[index];
             if (char) {
                 // 채워진 슬롯
                 const slot = document.createElement('div');
@@ -101,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 slot.addEventListener('click', () => openCreateMenu(index));
                 charSlotContainer.appendChild(slot);
             }
-        });
+        }
     }
 
     // 전역 노출
@@ -111,10 +135,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.deleteCharFromSlot = function(index) {
-        if (confirm('정말로 이 캐릭터를 삭제하시겠습니까?')) {
-            DB.deleteCharacter(currentAccountId, index);
-            renderCharacterSlots();
-        }
+        window.gameConfirm('정말로 이 캐릭터를 삭제하시겠습니까?').then(res => {
+            if (res) {
+                DB.deleteCharacter(currentAccountId, index);
+                renderCharacterSlots();
+            }
+        });
     };
 
     // 캐릭터 생성 UI 관련 로직
@@ -164,17 +190,17 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCreateSubmit.addEventListener('click', () => {
         const name = inputCharName.value.trim();
         if (!name) {
-            alert('캐릭터 이름을 입력하세요!');
+            window.gameAlert('캐릭터 이름을 입력하세요!');
             return;
         }
         if (DB.checkNameDuplicate(name)) {
-            alert('이미 존재하는 캐릭터 이름입니다. 다른 이름을 선택하세요.');
+            window.gameAlert('이미 존재하는 캐릭터 이름입니다. 다른 이름을 선택하세요.');
             return;
         }
 
         const newChar = createNewCharacter(name, selectedGender, selectedAppearance);
         DB.saveCharacter(currentAccountId, creatingSlotIndex, newChar);
-        alert('캐릭터가 생성되었습니다!');
+        window.gameAlert('캐릭터가 생성되었습니다!', 'success', true);
         
         charCreateView.style.display = 'none';
         charSelectView.style.display = 'block';
@@ -186,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnBackup.addEventListener('click', () => {
             const dataStr = DB.exportData();
             if (!dataStr) {
-                alert("백업할 데이터가 없습니다.");
+                window.gameAlert("백업할 데이터가 없습니다.");
                 return;
             }
             const blob = new Blob([dataStr], { type: "application/json" });
@@ -201,9 +227,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnRestoreTrigger && inputRestoreFile) {
         btnRestoreTrigger.addEventListener('click', () => {
-            if (confirm("경고: 기존 데이터가 모두 덮어씌워집니다. 진행하시겠습니까?")) {
-                inputRestoreFile.click();
-            }
+            window.gameConfirm("경고: 기존 데이터가 모두 덮어씌워집니다. 진행하시겠습니까?").then(res => {
+                if (res) {
+                    inputRestoreFile.click();
+                }
+            });
         });
 
         inputRestoreFile.addEventListener('change', (e) => {
@@ -214,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.onload = (event) => {
                 const success = DB.importData(event.target.result);
                 if (success) {
-                    alert("데이터 복구가 완료되었습니다!");
+                    window.gameAlert("데이터 복구가 완료되었습니다!");
                     // 복구 후 UI 초기화
                     inputAccountId.value = '';
                     loginView.style.display = 'block';
@@ -222,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     sessionStorage.removeItem('lastAccount');
                     sessionStorage.removeItem('lastSlot');
                 } else {
-                    alert("올바르지 않은 세이브 파일입니다.");
+                    window.gameAlert("올바르지 않은 세이브 파일입니다.");
                 }
                 // input 필드 초기화 (같은 파일을 다시 선택할 수 있도록)
                 inputRestoreFile.value = '';

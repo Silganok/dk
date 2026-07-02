@@ -2,7 +2,7 @@
 let tabBtns, views, statsContainer;
 let btnInn, btnChurch, btnShop, btnGuild, btnWarrior, btnMage, btnArcher, btnStatReset, guildMenu;
 let fieldIdle, fieldCombat, monsterNameDisplay, monsterHpDisplay, combatLog;
-let btnExplore, btnAttack, btnSkill, btnFlee, btnStopAuto, combatSkillMenu, combatSkillList;
+let btnExplore, btnAttack, btnSkill, btnItem, btnFlee, btnStopAuto, combatSkillMenu, combatSkillList, combatItemMenu, combatItemList;
 let btnWarehouse, warehouseMenu, warehouseInvList, warehouseStorageList;
 let equipmentContainer, inventoryList, inventoryFilters;
 let currentInvFilter = 'all';
@@ -40,8 +40,11 @@ function initGameUI() {
     btnSkill = document.getElementById('btn-skill');
     btnFlee = document.getElementById('btn-flee');
     btnStopAuto = document.getElementById('btn-stop-auto');
+    btnItem = document.getElementById('btn-item');
     combatSkillMenu = document.getElementById('combat-skill-menu');
     combatSkillList = document.getElementById('combat-skill-list');
+    combatItemMenu = document.getElementById('combat-item-menu');
+    combatItemList = document.getElementById('combat-item-list');
 
     gHp = document.getElementById('g-hp');
     gMp = document.getElementById('g-mp');
@@ -56,6 +59,33 @@ function initGameUI() {
     combatPlayerMpBar = document.getElementById('combat-player-mp-bar');
     combatMonsterHpText = document.getElementById('combat-monster-hp-text');
     combatMonsterHpBar = document.getElementById('combat-monster-hp-bar');
+
+    // --- 사냥 설정 상태 유지 (localStorage) ---
+    const autoPotionHp = document.getElementById('auto-potion-hp');
+    const autoPotionMp = document.getElementById('auto-potion-mp');
+    
+    if (selAutoCombat) {
+        selAutoCombat.value = localStorage.getItem('dk_auto_combat') || 'manual';
+        selAutoCombat.addEventListener('change', (e) => localStorage.setItem('dk_auto_combat', e.target.value));
+    }
+    if (autoPotionHp) {
+        autoPotionHp.value = localStorage.getItem('dk_auto_potion_hp') || '30';
+        autoPotionHp.addEventListener('change', (e) => localStorage.setItem('dk_auto_potion_hp', e.target.value));
+    }
+    if (autoPotionMp) {
+        autoPotionMp.value = localStorage.getItem('dk_auto_potion_mp') || '20';
+        autoPotionMp.addEventListener('change', (e) => localStorage.setItem('dk_auto_potion_mp', e.target.value));
+    }
+
+    // --- NPC 정보 초기화 ---
+    if (window.NPC_DB) {
+        Object.values(window.NPC_DB).forEach(npc => {
+            const nameEl = document.getElementById(`npc-name-${npc.id}`);
+            const greetEl = document.getElementById(`npc-greet-${npc.id}`);
+            if (nameEl) nameEl.textContent = `${npc.name} (${npc.job})`;
+            if (greetEl) greetEl.textContent = `"${npc.greeting}"`;
+        });
+    }
 
     // 이벤트 리스너 바인딩
     tabBtns.forEach(btn => {
@@ -73,14 +103,59 @@ function initGameUI() {
             const targetId = btn.dataset.target;
             townMain.style.display = 'none';
             townSubviews.forEach(view => view.style.display = 'none');
-            document.getElementById(targetId).style.display = 'block';
+            document.getElementById(targetId).style.display = 'flex';
             btnBackToTown.style.display = 'block';
             
             if (targetId === 'town-warehouse') renderWarehouse();
             if (targetId === 'town-sell') renderShopSellList();
-            if (targetId === 'town-weapon') renderShopCategoryList('weapon', 'shop-weapon-list');
-            if (targetId === 'town-armor') renderShopCategoryList('body', 'shop-armor-list');
-            if (targetId === 'town-consumable') renderShopCategoryList('consumable', 'shop-consumable-list');
+            if (targetId === 'town-weapon') {
+                const activeWeaponCat = document.querySelector('.btn-shop-weapon-cat.active');
+                if (activeWeaponCat) activeWeaponCat.click();
+            }
+            if (targetId === 'town-consumable') {
+                const activeConsCat = document.querySelector('.btn-shop-cons-cat.active');
+                if (activeConsCat) activeConsCat.click();
+            }
+        });
+    });
+
+    const shopWeaponCats = document.querySelectorAll('.btn-shop-weapon-cat');
+    shopWeaponCats.forEach(btn => {
+        btn.addEventListener('click', () => {
+            shopWeaponCats.forEach(b => {
+                b.classList.remove('active');
+                b.style.borderColor = '#475569';
+                b.style.color = '#cbd5e1';
+            });
+            btn.classList.add('active');
+            btn.style.borderColor = '#ef4444';
+            btn.style.color = '#fca5a5';
+            
+            if (btn.dataset.cat === 'weapon') {
+                renderShopCategoryList(['weapon'], 'shop-weapon-list');
+            } else {
+                renderShopCategoryList(['body', 'head', 'pants', 'shoes'], 'shop-weapon-list');
+            }
+        });
+    });
+
+    const shopConsCats = document.querySelectorAll('.btn-shop-cons-cat');
+    shopConsCats.forEach(btn => {
+        btn.addEventListener('click', () => {
+            shopConsCats.forEach(b => {
+                b.classList.remove('active');
+                b.style.borderColor = '#475569';
+                b.style.color = '#cbd5e1';
+            });
+            btn.classList.add('active');
+            btn.style.borderColor = '#a855f7';
+            btn.style.color = '#d8b4fe';
+            
+            if (btn.dataset.cat === 'accessory') {
+                renderShopCategoryList(['accessory', 'accessory1', 'accessory2'], 'shop-consumable-list');
+            } else {
+                renderShopCategoryList(['consumable'], 'shop-consumable-list');
+            }
         });
     });
 
@@ -92,73 +167,119 @@ function initGameUI() {
         });
     }
 
-    // --- 여관 기능 ---
     const btnInnRest = document.getElementById('btn-inn-rest');
     if (btnInnRest) {
-        // 비용: 레벨 * 5
-        btnInnRest.textContent = `휴식 (${(playerState.level || 1) * 5}G)`;
+        // 비용: 레벨 * 10 (피로도 회복이므로 기존 여관비용보단 조금 비싸게)
+        btnInnRest.textContent = `휴식 (${(playerState.level || 1) * 10}G)`;
         btnInnRest.addEventListener('click', () => {
-            const cost = (playerState.level || 1) * 5;
-            if (playerState.gold >= cost) {
-                if (playerState.currentHp === playerState.maxHp && playerState.currentMp === playerState.maxMp) {
-                    alert("이미 체력과 마력이 가득 찼습니다.");
-                    return;
-                }
-                updatePlayerState({
-                    gold: playerState.gold - cost,
-                    currentHp: playerState.maxHp,
-                    currentMp: playerState.maxMp
-                });
-                alert(`${cost}G를 지불하고 체력과 마력을 모두 회복했습니다.`);
-            } else {
-                alert("골드가 부족합니다.");
-            }
-        });
-    }
-
-    const btnInnMeals = document.querySelectorAll('.btn-inn-meal');
-    btnInnMeals.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const mealType = btn.dataset.meal;
-            let cost = 0;
-            let buffDesc = "";
-            let buffData = null;
-
-            if (mealType === 'bbq') {
-                cost = 100; buffDesc = "물리/마법 공격력 10% 증가"; buffData = { type: 'bbq', stat: 'atk', amount: 0.1 };
-            } else if (mealType === 'salad') {
-                cost = 80; buffDesc = "명중률/회피율 10 증가"; buffData = { type: 'salad', stat: 'acc_eva', amount: 10 };
-            } else if (mealType === 'stew') {
-                cost = 150; buffDesc = "획득 경험치 15% 증가"; buffData = { type: 'stew', stat: 'exp', amount: 0.15 };
-            }
-
-            if (playerState.gold >= cost) {
-                updatePlayerState({
-                    gold: playerState.gold - cost,
-                    mealBuff: { ...buffData, count: 10 }
-                });
-                alert(`식사를 마쳤습니다! 10번의 전투 동안 [${buffDesc}] 효과가 적용됩니다.`);
-            } else {
-                alert("골드가 부족합니다.");
-            }
-        });
-    });
-
-    // --- 성당 기능 ---
-    const btnChurchHeal = document.getElementById('btn-church-heal');
-    if (btnChurchHeal) {
-        // 비용: 레벨 * 20
-        btnChurchHeal.textContent = `가호 받기 (${(playerState.level || 1) * 20}G)`;
-        btnChurchHeal.addEventListener('click', () => {
-            const cost = (playerState.level || 1) * 20;
+            const cost = (playerState.level || 1) * 10;
             if (playerState.gold >= cost) {
                 updatePlayerState({
                     gold: playerState.gold - cost,
                     fatigue: playerState.fatigue + 100
                 });
-                alert(`여신의 가호를 받아 피로도가 100 증가했습니다! (${cost}G 소모)`);
+                window.gameAlert(`충분한 휴식을 취해 피로도를 100 회복했습니다! (${cost}G 소모)`);
             } else {
-                alert("골드가 부족합니다.");
+                window.gameAlert("골드가 부족합니다.");
+            }
+        });
+    }
+
+    function renderInnMeals() {
+        const container = document.getElementById('inn-meal-list');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div style="display: flex; gap: 16px;">
+                <div style="flex: 1;">
+                    <h5 style="color: #fca5a5; margin-bottom: 8px; font-size: 13px; border-bottom: 1px solid #334155; padding-bottom: 4px;">🍖 식사류</h5>
+                    <div id="inn-main-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+                <div style="flex: 1;">
+                    <h5 style="color: #fde047; margin-bottom: 8px; font-size: 13px; border-bottom: 1px solid #334155; padding-bottom: 4px;">🍰 디저트류</h5>
+                    <div id="inn-dessert-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+            </div>
+        `;
+        
+        if (typeof window.MEAL_DB === 'undefined') return;
+
+        const mainList = document.getElementById('inn-main-list');
+        const dessertList = document.getElementById('inn-dessert-list');
+
+        for (const [mealId, meal] of Object.entries(window.MEAL_DB)) {
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = "display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #334155; padding-top: 8px;";
+            itemDiv.innerHTML = `
+                <div>
+                    <div style="color: #f8fafc; font-size: 12px; font-weight: bold;">${meal.icon} ${meal.name}</div>
+                    <div style="color: #94a3b8; font-size: 10px; margin-top: 2px;">${meal.desc}</div>
+                </div>
+                <button class="action-btn btn-inn-meal" data-meal="${mealId}" style="padding: 4px 8px; font-size: 11px; width: auto; border-color: #ef4444; color: #fca5a5; white-space: nowrap; margin-left: 8px;">${meal.price.toLocaleString()} G</button>
+            `;
+            
+            if (meal.category === 'dessert') {
+                dessertList.appendChild(itemDiv);
+            } else {
+                mainList.appendChild(itemDiv);
+            }
+        }
+
+        container.querySelectorAll('.btn-inn-meal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mealId = btn.dataset.meal;
+                const meal = window.MEAL_DB[mealId];
+                if (!meal) return;
+
+                if (playerState.gold >= meal.price) {
+                    let currentBuffs = playerState.mealBuffs || { main: null, dessert: null };
+                    if (playerState.mealBuff && !playerState.mealBuffs) {
+                        currentBuffs.main = playerState.mealBuff;
+                    }
+                    const category = meal.category || 'main';
+                    currentBuffs[category] = { id: mealId, remainingBattles: meal.duration };
+
+                    updatePlayerState({
+                        gold: playerState.gold - meal.price,
+                        mealBuffs: currentBuffs,
+                        mealBuff: null // Clear old legacy buff
+                    });
+                    window.gameAlert(`식사를 마쳤습니다! ${meal.duration}회 전투 동안 [${meal.name}] 효과가 적용됩니다.`);
+                } else {
+                    window.gameAlert("골드가 부족합니다.");
+                }
+            });
+        });
+    }
+
+    // 초기 요리 렌더링
+    renderInnMeals();
+
+    // --- 성당 기능 ---
+    const btnChurchHeal = document.getElementById('btn-church-heal');
+    if (btnChurchHeal) {
+        // 비용: 레벨 * 5
+        btnChurchHeal.textContent = `치유 받기 (${(playerState.level || 1) * 5}G)`;
+        btnChurchHeal.addEventListener('click', () => {
+            const cost = (playerState.level || 1) * 5;
+            if (playerState.gold >= cost) {
+                let isPoisoned = playerState.statusEffects && playerState.statusEffects["Poison"];
+                if (playerState.currentHp === playerState.maxHp && playerState.currentMp === playerState.maxMp && !isPoisoned) {
+                    window.gameAlert("이미 치유할 상처가 없습니다.");
+                    return;
+                }
+                let newStatus = {...playerState.statusEffects};
+                if (isPoisoned) delete newStatus["Poison"];
+                
+                updatePlayerState({
+                    gold: playerState.gold - cost,
+                    currentHp: playerState.maxHp,
+                    currentMp: playerState.maxMp,
+                    statusEffects: newStatus
+                });
+                window.gameAlert(`여신의 권능으로 모든 상처와 질병이 회복되었습니다! (${cost}G 소모)`);
+            } else {
+                window.gameAlert("공물이 부족합니다.");
             }
         });
     }
@@ -184,47 +305,113 @@ function initGameUI() {
         });
     }
 
-    if (btnWarrior) {
-        btnWarrior.addEventListener('click', () => {
-            const jobData = JOB_DB["검사"];
-            playerState.skills = {};
-            playerState.equippedSkills = [];
-            updatePlayerState({ job: "검사", jobLevel: 1, jobExp: 0, skills: playerState.skills, equippedSkills: playerState.equippedSkills });
-            guildMenu.style.display = 'none';
-            alert(`검사로 전직했습니다! ${jobData.desc}`);
+    const checkJobChangeCondition = () => {
+        if (playerState.job !== "초보자") {
+            window.gameAlert("이미 전직을 완료했습니다.");
+            return false;
+        }
+        if (playerState.jobLevel < 10) {
+            window.gameAlert("초보자 직업 레벨이 10 이상이어야 전직할 수 있습니다.");
+            return false;
+        }
+        return true;
+    };
+
+    const handleJobChange = (jobName) => {
+        if (!checkJobChangeCondition()) return;
+        const jobData = JOB_DB[jobName];
+        window.gameConfirm(`${jobName} - ${jobData.desc}<br><br>정말 전직하시겠습니까?`).then(res => {
+            if (res) {
+                playerState.skills = {};
+                playerState.equippedSkills = [];
+                updatePlayerState({ job: jobName, jobLevel: 1, jobExp: 0, skills: playerState.skills, equippedSkills: playerState.equippedSkills });
+                
+                guildMenu.style.display = 'none';
+                
+                if (typeof switchTab === 'function') {
+                    switchTab('info');
+                }
+                setTimeout(() => {
+                    window.gameAlert(`${jobName}(으)로 전직했습니다!`, 'success', true);
+                }, 100);
+            }
         });
+    };
+
+    if (btnWarrior) {
+        btnWarrior.addEventListener('click', () => handleJobChange("검사"));
     }
 
     if (btnMage) {
-        btnMage.addEventListener('click', () => {
-            const jobData = JOB_DB["마법사"];
-            playerState.skills = {};
-            playerState.equippedSkills = [];
-            updatePlayerState({ job: "마법사", jobLevel: 1, jobExp: 0, skills: playerState.skills, equippedSkills: playerState.equippedSkills });
-            guildMenu.style.display = 'none';
-            alert(`마법사로 전직했습니다! ${jobData.desc}`);
-        });
+        btnMage.addEventListener('click', () => handleJobChange("마법사"));
     }
 
     if (btnArcher) {
-        btnArcher.addEventListener('click', () => {
-            const jobData = JOB_DB["궁수"];
-            playerState.skills = {};
-            playerState.equippedSkills = [];
-            updatePlayerState({ job: "궁수", jobLevel: 1, jobExp: 0, skills: playerState.skills, equippedSkills: playerState.equippedSkills });
-            guildMenu.style.display = 'none';
-            alert(`궁수로 전직했습니다! ${jobData.desc}`);
-        });
+        btnArcher.addEventListener('click', () => handleJobChange("궁수"));
     }
 
     if (btnStatReset) {
         btnStatReset.addEventListener('click', () => {
-            if (confirm("정말로 스탯을 모두 초기화하시겠습니까? 포인트가 전부 반환됩니다.")) {
-                playerState.baseStats = { str: 1, agi: 1, dex: 1, vit: 1, int: 1, luk: 1 };
-                playerState.statPoints = EXP_DB.getAccumulatedStatPoints(playerState.level);
-                updatePlayerState({ baseStats: playerState.baseStats, statPoints: playerState.statPoints });
-                alert("스탯이 모두 초기화되었습니다!");
-                if (typeof renderPlayerStats === 'function') renderPlayerStats();
+            window.gameConfirm("정말로 스탯을 모두 초기화하시겠습니까? 포인트가 전부 반환됩니다.").then(res => {
+                if (res) {
+                    playerState.baseStats = { str: 1, agi: 1, dex: 1, vit: 1, int: 1, luk: 1 };
+                    playerState.statPoints = EXP_DB.getAccumulatedStatPoints(playerState.level);
+                    updatePlayerState({ baseStats: playerState.baseStats, statPoints: playerState.statPoints });
+                    window.gameAlert("여신의 세례로 스탯이 모두 초기화되었습니다!", 'info', true);
+                    if (typeof renderPlayerStats === 'function') renderPlayerStats();
+                }
+            });
+        });
+    }
+
+    const btnSkillReset = document.getElementById('btn-skill-reset');
+    if (btnSkillReset) {
+        btnSkillReset.addEventListener('click', () => {
+            if (playerState.job === "초보자") {
+                window.gameAlert("초보자는 스킬을 배울 수 없어 초기화가 불필요합니다.");
+                return;
+            }
+            window.gameConfirm("정말로 스킬을 모두 초기화하시겠습니까? 포인트가 전부 반환됩니다.").then(res => {
+                if (res) {
+                    playerState.skills = {};
+                    playerState.equippedSkills = [];
+                    // Job level 1 starts with 0 points. Level up gives points.
+                    playerState.skillPoints = Math.max(0, playerState.jobLevel - 1);
+                    updatePlayerState({ skills: playerState.skills, equippedSkills: playerState.equippedSkills, skillPoints: playerState.skillPoints });
+                    window.gameAlert("여신의 세례로 스킬이 모두 초기화되었습니다!", 'info', true);
+                    if (typeof renderPlayerStats === 'function') renderPlayerStats();
+                }
+            });
+        });
+    }
+
+    const btnGuildDaily = document.getElementById('btn-guild-daily');
+    if (btnGuildDaily) {
+        btnGuildDaily.addEventListener('click', () => {
+            renderQuestList('daily');
+        });
+    }
+
+    const btnGuildWeekly = document.getElementById('btn-guild-weekly');
+    if (btnGuildWeekly) {
+        btnGuildWeekly.addEventListener('click', () => {
+            renderQuestList('weekly');
+        });
+    }
+
+    const btnQuestClose = document.getElementById('btn-quest-close');
+    const questModal = document.getElementById('quest-modal');
+    if (btnQuestClose && questModal) {
+        btnQuestClose.addEventListener('click', () => {
+            questModal.style.display = 'none';
+        });
+    }
+
+    const cbQuestShowLow = document.getElementById('cb-quest-show-low');
+    if (cbQuestShowLow) {
+        cbQuestShowLow.addEventListener('change', () => {
+            if (questModal.dataset.currentCycle) {
+                renderQuestList(questModal.dataset.currentCycle);
             }
         });
     }
@@ -238,35 +425,131 @@ function initGameUI() {
     if (btnSkill) {
         btnSkill.addEventListener('click', () => {
             if (!currentMonster || playerState.currentHp <= 0) return;
+            if (combatItemMenu) combatItemMenu.style.display = 'none';
             if (combatSkillMenu.style.display === 'none') {
+                let activeSkills = [];
+                for (let sName in playerState.skills) {
+                    if (SKILL_DB[sName] && SKILL_DB[sName].type !== 'passive') activeSkills.push(sName);
+                }
+                if (activeSkills.length === 0) {
+                    window.gameAlert("전투에 사용할 수 있는 액티브 스킬이 없습니다.");
+                    return;
+                }
+                
                 combatSkillMenu.style.display = 'block';
                 combatSkillList.innerHTML = '';
-                if (playerState.skills.length === 0) {
-                    combatSkillList.innerHTML = '<span style="color:#94a3b8; font-size:13px;">배운 스킬이 없습니다.</span>';
-                } else {
-                    playerState.skills.forEach(skill => {
+                
+                activeSkills.forEach(sName => {
+                        const skillData = SKILL_DB[sName];
+                        const sLevel = playerState.skills[sName];
+                        const costMp = skillData.getCostMp ? skillData.getCostMp(sLevel) : 0;
                         const sBtn = document.createElement('button');
                         sBtn.className = 'action-btn';
                         sBtn.style.padding = '4px 8px';
                         sBtn.style.fontSize = '12px';
-                        sBtn.textContent = `${skill.name} (MP ${skill.costMp})`;
-                        sBtn.addEventListener('click', () => {
-                            if (playerState.currentMp < skill.costMp) {
-                                alert("MP가 부족합니다!");
-                                return;
-                            }
-                            combatSkillMenu.style.display = 'none';
-                            updatePlayerState({ currentMp: playerState.currentMp - skill.costMp });
-                            executePlayerAction(skill);
-                        });
+                        sBtn.textContent = `${sName} (MP ${costMp})`;
+                        
+                        // 쿨타임 체크
+                        if (window.skillCooldowns && window.skillCooldowns[sName] > 0) {
+                            sBtn.textContent += ` [쿨타임 ${window.skillCooldowns[sName]}턴]`;
+                            sBtn.style.opacity = '0.5';
+                            sBtn.style.cursor = 'not-allowed';
+                        } else {
+                            sBtn.addEventListener('click', () => {
+                                if (playerState.currentMp < costMp) {
+                                    window.gameAlert("MP가 부족합니다!");
+                                    return;
+                                }
+                                combatSkillMenu.style.display = 'none';
+                                window.manualSkill = skillData;
+                                executePlayerAction();
+                            });
+                        }
                         combatSkillList.appendChild(sBtn);
                     });
-                }
             } else {
                 combatSkillMenu.style.display = 'none';
             }
         });
     }
+
+    if (btnItem) {
+        btnItem.addEventListener('click', () => {
+            if (!currentMonster || playerState.currentHp <= 0) return;
+            if (combatSkillMenu) combatSkillMenu.style.display = 'none';
+    if (combatItemMenu) combatItemMenu.style.display = 'none';
+    window.itemUsedThisTurn = false;
+            if (combatItemMenu.style.display === 'none') {
+                let consumables = playerState.inventory.filter(i => i && ITEM_DB[i.id] && (ITEM_DB[i.id].healHp || ITEM_DB[i.id].healMp || ITEM_DB[i.id].curePoison));
+                
+                if (consumables.length === 0) {
+                    window.gameAlert("사용할 수 있는 소모품(포션, 해독제 등)이 없습니다.");
+                    return;
+                }
+
+                combatItemMenu.style.display = 'block';
+                combatItemList.innerHTML = '';
+                
+                consumables.forEach(invItem => {
+                        const itemData = ITEM_DB[invItem.id];
+                        const iBtn = document.createElement('button');
+                        iBtn.className = 'action-btn';
+                        iBtn.style.padding = '4px 8px';
+                        iBtn.style.fontSize = '12px';
+                        iBtn.style.borderColor = '#10b981';
+                        iBtn.style.color = '#6ee7b7';
+                        iBtn.textContent = `${itemData.name} (x${invItem.count})`;
+                        
+                        if (window.itemUsedThisTurn) {
+                            iBtn.style.opacity = '0.5';
+                            iBtn.style.cursor = 'not-allowed';
+                            iBtn.title = "한 턴에 한 번만 사용할 수 있습니다.";
+                        } else {
+                            iBtn.addEventListener('click', () => {
+                                // 사용 처리
+                                let used = false;
+                                if (itemData.healHp) {
+                                    const hp = Math.min(playerState.maxHp, playerState.currentHp + itemData.healHp);
+                                    updatePlayerState({ currentHp: hp });
+                                    addCombatLog(`[소모품] ${itemData.name}을(를) 사용하여 체력을 회복했습니다!`, "#10b981");
+                                    used = true;
+                                }
+                                if (itemData.healMp) {
+                                    const mp = Math.min(playerState.maxMp, playerState.currentMp + itemData.healMp);
+                                    updatePlayerState({ currentMp: mp });
+                                    addCombatLog(`[소모품] ${itemData.name}을(를) 사용하여 마나를 회복했습니다!`, "#3b82f6");
+                                    used = true;
+                                }
+                                if (itemData.curePoison) {
+                                    if (playerState.statusEffects && playerState.statusEffects["Poison"]) {
+                                        let s = {...playerState.statusEffects};
+                                        delete s["Poison"];
+                                        updatePlayerState({ statusEffects: s });
+                                        addCombatLog(`[소모품] ${itemData.name}을(를) 사용하여 맹독을 해독했습니다!`, "#10b981");
+                                        used = true;
+                                    } else {
+                                        window.gameAlert("중독 상태가 아닙니다.");
+                                        return;
+                                    }
+                                }
+                                
+                                if (used) {
+                                    window.loseItem(invItem.id, 1);
+                                    window.itemUsedThisTurn = true;
+                                    combatItemMenu.style.display = 'none';
+                                    updateCombatUI();
+                                    renderInventory();
+                                }
+                            });
+                        }
+                        combatItemList.appendChild(iBtn);
+                    });
+            } else {
+                combatItemMenu.style.display = 'none';
+            }
+        });
+    }
+
 
     if (btnFlee) {
         btnFlee.addEventListener('click', () => {
@@ -293,9 +576,12 @@ function initGameUI() {
 }
 
 function switchTab(targetId) {
-    if (targetId !== 'field' && typeof currentMonster !== 'undefined' && currentMonster) {
-        window.isAutoCombatActive = false;
-        window.autoCombatMode = 'manual';
+    if (targetId !== 'field') {
+        if (window.isAutoCombatActive) {
+            window.isAutoCombatActive = false;
+            window.autoCombatMode = 'manual';
+            addCombatLog("다른 메뉴로 이동하여 자동전투가 중단되었습니다.", "#fca5a5");
+        }
         if (typeof endCombat === 'function') endCombat();
     }
     tabBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.target === targetId));
@@ -307,6 +593,13 @@ function switchTab(targetId) {
         renderInventory();
     } else if (targetId === 'field') {
         if (typeof renderFieldList === 'function') renderFieldList();
+    } else if (targetId === 'town') {
+        const townMain = document.getElementById('town-main');
+        const townSubviews = document.querySelectorAll('.town-subview');
+        const btnBackToTown = document.getElementById('btn-back-to-town');
+        if (townMain) townMain.style.display = 'block';
+        if (townSubviews) townSubviews.forEach(view => view.style.display = 'none');
+        if (btnBackToTown) btnBackToTown.style.display = 'none';
     }
 }
 
@@ -371,11 +664,23 @@ window.renderFieldList = function() {
 
 window.startCombat = function(fieldId) {
     if (playerState.currentHp <= 0) {
-        alert("체력을 먼저 회복하세요!");
+        window.gameAlert("체력을 먼저 회복하세요!");
         return;
     }
+    
+    // 영구 상태이상(독) 필드 탐색 데미지
+    if (playerState.statusEffects && playerState.statusEffects["Poison"]) {
+        let poisonDmg = Math.max(1, Math.floor(playerState.maxHp * 0.02));
+        playerState.currentHp -= poisonDmg;
+        if (playerState.currentHp <= 0) {
+            playerState.currentHp = 1;
+            window.gameAlert(`맹독 상태로 인해 탐색 중 체력이 1이 되었습니다. 해독제나 성당을 이용하세요!`);
+            window.isAutoCombatActive = false;
+            return;
+        }
+    }
     if (playerState.fatigue < 5) {
-        alert(`피로도가 부족합니다! (현재: ${playerState.fatigue}, 필요: 5)`);
+        window.gameAlert(`피로도가 부족합니다! (현재: ${playerState.fatigue}, 필요: 5)`);
         window.isAutoCombatActive = false;
         return;
     }
@@ -385,7 +690,7 @@ window.startCombat = function(fieldId) {
     if (fieldData.requireItem) {
         const keyIndex = playerState.inventory.findIndex(i => i && i.name === fieldData.requireItem);
         if (keyIndex === -1) {
-            alert(`${fieldData.requireItem} 아이템이 부족합니다!`);
+            window.gameAlert(`${fieldData.requireItem} 아이템이 부족합니다!`);
             window.isAutoCombatActive = false;
             renderFieldList();
             return;
@@ -428,6 +733,8 @@ window.startCombat = function(fieldId) {
     fieldIdle.style.display = 'none';
     fieldCombat.style.display = 'block';
     if (combatSkillMenu) combatSkillMenu.style.display = 'none';
+    if (combatItemMenu) combatItemMenu.style.display = 'none';
+    window.itemUsedThisTurn = false;
     
     updateCombatUI();
     combatLog.innerHTML = '';
@@ -460,12 +767,52 @@ window.updateCombatUI = function() {
         if(combatPlayerMpText) combatPlayerMpText.textContent = `${pMp}/${pMaxMp}`;
         if(combatPlayerMpBar) combatPlayerMpBar.style.width = `${Math.max(0, (pMp / pMaxMp) * 100)}%`;
 
+        const playerBuffsContainer = document.getElementById('combat-player-buffs');
+        if (playerBuffsContainer) {
+            playerBuffsContainer.innerHTML = '';
+            const buffs = [];
+            if (playerState.mealBuffs) {
+                if (playerState.mealBuffs.main) buffs.push(playerState.mealBuffs.main);
+                if (playerState.mealBuffs.dessert) buffs.push(playerState.mealBuffs.dessert);
+            } else if (playerState.mealBuff) {
+                buffs.push(playerState.mealBuff);
+            }
+
+            for (const buff of buffs) {
+                if (buff && buff.remainingBattles > 0) {
+                    const meal = typeof window.MEAL_DB !== 'undefined' ? window.MEAL_DB[buff.id] : null;
+                    if (meal) {
+                        playerBuffsContainer.innerHTML += `<span style="font-size: 11px; background: rgba(0,0,0,0.5); padding: 2px 4px; border-radius: 4px; border: 1px solid #475569; cursor: help;" title="${meal.name}: ${meal.desc}">${meal.icon}x${buff.remainingBattles}</span>`;
+                    }
+                }
+            }
+            if (window.combatBuffs && window.combatBuffs.player) {
+                for (const [buffName, duration] of Object.entries(window.combatBuffs.player)) {
+                    if (duration > 0) {
+                        playerBuffsContainer.innerHTML += `<span style="font-size: 11px; background: rgba(59,130,246,0.2); padding: 2px 4px; border-radius: 4px; border: 1px solid #3b82f6; color: #93c5fd; cursor: help;" title="${buffName} (${duration}턴 남음)">✨${buffName}x${duration}</span>`;
+                    }
+                }
+            }
+        }
+
         if(monsterNameDisplay) monsterNameDisplay.textContent = currentMonster.name;
         
         const mHp = Math.max(0, currentMonster.hp);
         const mMaxHp = currentMonster.maxHp || 1;
         if(combatMonsterHpText) combatMonsterHpText.textContent = `${mHp}/${mMaxHp}`;
         if(combatMonsterHpBar) combatMonsterHpBar.style.width = `${Math.max(0, (mHp / mMaxHp) * 100)}%`;
+
+        const monsterBuffsContainer = document.getElementById('combat-monster-buffs');
+        if (monsterBuffsContainer) {
+            monsterBuffsContainer.innerHTML = '';
+            if (window.combatBuffs && window.combatBuffs.monster) {
+                for (const [buffName, duration] of Object.entries(window.combatBuffs.monster)) {
+                    if (duration > 0) {
+                        monsterBuffsContainer.innerHTML += `<span style="font-size: 11px; background: rgba(239,68,68,0.2); padding: 2px 4px; border-radius: 4px; border: 1px solid #ef4444; color: #fca5a5; cursor: help;" title="${buffName} (${duration}턴 남음)">💀${buffName}x${duration}</span>`;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -522,6 +869,7 @@ function getItemTooltipText(item) {
     if (item.vit) stats.push(`VIT +${item.vit}`);
     if (item.int) stats.push(`INT +${item.int}`);
     if (item.luk) stats.push(`LUK +${item.luk}`);
+    if (item.reqLevel) stats.push(`[요구 레벨: ${item.reqLevel}]`);
     if (item.healHp) stats.push(`HP 회복: ${item.healHp}`);
     if (item.healMp) stats.push(`MP 회복: ${item.healMp}`);
     
@@ -544,32 +892,37 @@ window.renderPlayerStats = function() {
     
     const jobData = JOB_DB[playerState.job];
     const maxJobLevel = jobData ? jobData.maxLevel : 10;
-    const jobReq = EXP_DB.getRequiredJobExp(playerState.jobLevel);
+    const jobReq = EXP_DB.getRequiredJobExp(playerState.jobLevel, playerState.job);
     const jobExpPercent = playerState.jobLevel >= maxJobLevel ? 100 : Math.min(100, ((playerState.jobExp || 0) / jobReq) * 100);
     
-    const slotNames = { weapon: '무기', subWeapon: '보조', head: '투구', body: '갑옷', pants: '바지', shoes: '신발', accessory1: '장신구1', accessory2: '장신구2' };
-    
-    let equipHtml = '';
-    for (const slot in slotNames) {
-        const item = playerState.equipment[slot];
-        equipHtml += `
-            <div class="equip-slot" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid #334155;" title="${item ? getItemTooltipText(item) : ''}">
-                <div style="flex: 1; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px;">
-                    <span style="font-size: 12px; color: #94a3b8; display: inline-block; width: 45px;">${slotNames[slot]}</span>
-                    <span style="color: ${item ? '#f8fafc' : '#475569'}; font-weight: ${item ? '600' : 'normal'}; font-size: 13px;">${item ? item.name : '없음'}</span>
-                </div>
-                ${item ? `<button class="action-btn danger" style="padding: 2px 6px; font-size: 11px; width: auto; margin: 0; min-width: 32px;" onclick="unequipItem('${slot}')">해제</button>` : ''}
+    // 장비 슬롯 렌더링 헬퍼
+    const renderEquipSlot = (slotKey, label) => {
+        const eqItem = playerState.equipment[slotKey];
+        let displayName = '비어있음';
+        let tooltip = '';
+        let nameColor = '#475569';
+        let hasItem = false;
+        
+        if (eqItem && ITEM_DB[eqItem.id]) {
+            hasItem = true;
+            const baseItem = ITEM_DB[eqItem.id];
+            const enhanceStr = eqItem.enhance ? `+${eqItem.enhance} ` : '';
+            displayName = `${enhanceStr}${baseItem.name}`;
+            tooltip = getItemTooltipText({ ...baseItem, ...eqItem });
+            nameColor = '#f8fafc';
+        }
+        
+        return `
+            <div class="equip-slot" style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.4); border: 1px solid #334155; border-radius: 4px; padding: 2px 4px; height: 26px; gap: 4px; width: 100%;" title="${tooltip}">
+                <span style="font-size: 10px; color: #94a3b8; background: #1e293b; padding: 1px 3px; border-radius: 2px; white-space: nowrap; flex-shrink: 0; min-width: 28px; text-align: center;">${label}</span>
+                <span style="font-size: 11px; color: ${nameColor}; font-weight: ${hasItem ? 'bold' : 'normal'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; text-align: left;">${displayName}</span>
+                ${hasItem ? `<button class="action-btn danger" style="padding: 1px; font-size: 9px; width: 22px; height: 16px; line-height: 14px; flex-shrink: 0; margin: 0;" onclick="unequipItem('${slotKey}')">해제</button>` : `<div style="width: 22px; flex-shrink: 0;"></div>`}
             </div>
         `;
-    }
+    };
 
     if (equipmentContainer) {
-        equipmentContainer.innerHTML = `
-            <div class="stat-section" style="grid-column: span 2; margin-bottom: 4px;">
-                <h3 style="font-size: 14px; color: #f59e0b; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">현재 장착 중인 장비</h3>
-            </div>
-            ${equipHtml}
-        `;
+        equipmentContainer.innerHTML = ''; 
     }
 
     const getStatHtml = (statKey, statLabel) => {
@@ -582,21 +935,21 @@ window.renderPlayerStats = function() {
         
         let btnHtml = '';
         if (base < 100) {
-            btnHtml = `<button class="action-btn stat-up-btn" data-stat="${statKey}" style="width: 100%; padding: 6px; font-size: 11px; margin: 0; ${canUpgrade ? 'border-color: #10b981; color: #6ee7b7;' : 'opacity: 0.3; cursor: not-allowed;'}" ${canUpgrade ? '' : 'disabled'}>+ 1 UP (비용: ${cost})</button>`;
+            btnHtml = `<button class="action-btn stat-up-btn" data-stat="${statKey}" style="width: 100%; padding: 4px; font-size: 10px; margin: 0; ${canUpgrade ? 'border-color: #10b981; color: #6ee7b7;' : 'opacity: 0.3; cursor: not-allowed;'}" ${canUpgrade ? '' : 'disabled'}>+1 UP(${cost})</button>`;
         } else {
-            btnHtml = `<button class="action-btn" style="width: 100%; padding: 6px; font-size: 11px; margin: 0; opacity: 0.5; border-color: #ef4444; color: #ef4444;" disabled>(MAX)</button>`;
+            btnHtml = `<button class="action-btn" style="width: 100%; padding: 4px; font-size: 10px; margin: 0; opacity: 0.5; border-color: #ef4444; color: #ef4444;" disabled>(MAX)</button>`;
         }
         
-        let details = `순수 ${base}`;
-        if (jobBonus > 0) details += ` <span style="color: #3b82f6;">+${jobBonus}(직업)</span>`;
-        if (equipBonus > 0) details += ` <span style="color: #10b981;">+${equipBonus}(장비)</span>`;
+        let details = `기본${base}`;
+        if (jobBonus > 0) details += `<span style="color: #3b82f6;">+${jobBonus}</span>`;
+        if (equipBonus > 0) details += `<span style="color: #10b981;">+${equipBonus}</span>`;
 
-        return `<div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+        return `<div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
             <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-                <span style="font-weight: bold; color: #f8fafc; font-size: 14px;">${statLabel}</span>
-                <span style="font-weight: bold; color: #f59e0b; font-size: 15px;">총합 ${total}</span>
+                <span style="font-weight: bold; color: #f8fafc; font-size: 12px; white-space: nowrap;">${statLabel}</span>
+                <span style="font-weight: bold; color: #f59e0b; font-size: 13px; white-space: nowrap;">${total}</span>
             </div>
-            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px;">
+            <div style="font-size: 10px; color: #94a3b8; margin-bottom: 6px; white-space: nowrap; text-align: right;">
                 ${details}
             </div>
             ${btnHtml}
@@ -605,9 +958,9 @@ window.renderPlayerStats = function() {
 
     let statBoxesHtml = `
         <div class="stat-section" style="grid-column: span 3; margin-top: 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: baseline;">
-            <h3 style="font-size: 14px; color: #f59e0b; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 0; width: 100%;">기본 스탯 <span style="font-size: 12px; color: #94a3b8; float: right;">잔여 포인트: <span style="color: #10b981; font-weight: bold;">${playerState.statPoints || 0}</span></span></h3>
+            <h3 style="font-size: 13px; color: #f59e0b; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; margin: 0; width: 100%;">기본 스탯 <span style="font-size: 11px; color: #94a3b8; float: right;">잔여 포인트: <span style="color: #10b981; font-weight: bold;">${playerState.statPoints || 0}</span></span></h3>
         </div>
-        <div style="grid-column: span 3; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%;">
+        <div style="grid-column: span 3; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; width: 100%;">
             ${getStatHtml('str', 'STR')}
             ${getStatHtml('agi', 'AGI')}
             ${getStatHtml('dex', 'DEX')}
@@ -618,58 +971,156 @@ window.renderPlayerStats = function() {
     `;
 
     statsContainer.innerHTML = `
-        <div style="grid-column: span 3; display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 16px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border: 1px solid #334155;">
-            <img src="${getAppearanceImageURL(playerState.gender || '남성', playerState.appearance || 1)}" alt="Portrait" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid ${playerState.gender === '여성' ? '#ec4899' : '#3b82f6'}; box-shadow: 0 4px 6px rgba(0,0,0,0.3); object-fit: cover;">
-            <div>
-                <div style="font-size: 20px; font-weight: bold; color: #f8fafc; margin-bottom: 4px;">${playerState.name}</div>
-                <div style="color: #94a3b8; font-size: 14px;">${playerState.job} | Lv.${playerState.level}</div>
+        <div style="grid-column: span 3; display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin-bottom: 12px; padding: 12px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border: 1px solid #334155;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                ${renderEquipSlot('head', '투구')}
+                ${renderEquipSlot('body', '갑옷')}
+                ${renderEquipSlot('pants', '바지')}
+                ${renderEquipSlot('shoes', '신발')}
+            </div>
+            
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100px; overflow: hidden;">
+                <img src="${getAppearanceImageURL(playerState.gender || '남성', playerState.appearance || 1)}" alt="Portrait" style="width: 70px; height: 70px; border-radius: 50%; border: 3px solid ${playerState.gender === '여성' ? '#ec4899' : '#3b82f6'}; box-shadow: 0 4px 6px rgba(0,0,0,0.3); object-fit: cover;">
+                <div style="font-size: 14px; font-weight: bold; color: #f8fafc; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center;">${playerState.name}</div>
+                <div style="color: #94a3b8; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center;">${playerState.job} | Lv.${playerState.level}</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                ${renderEquipSlot('weapon', '무기')}
+                ${renderEquipSlot('subWeapon', '보조')}
+                ${renderEquipSlot('accessory1', '장신1')}
+                ${renderEquipSlot('accessory2', '장신2')}
             </div>
         </div>
-        <div class="stat-section" style="grid-column: span 3; margin-bottom: 4px;">
-            <h3 style="font-size: 14px; color: #3b82f6; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">기본 정보</h3>
+        
+        <div style="grid-column: span 3; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+            <div class="stat-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center; padding: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span class="stat-label" style="font-size: 11px;">베이스 경험치</span>
+                    <span class="stat-value exp" style="font-size: 10px;">Lv.${playerState.level} (${playerState.exp}/${baseReq})</span>
+                </div>
+                <div style="width: 100%; background: #334155; height: 5px; border-radius: 3px; overflow: hidden;">
+                    <div style="width: ${baseExpPercent}%; background: #a855f7; height: 100%; transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+            <div class="stat-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center; padding: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span class="stat-label" style="font-size: 11px;">잡 경험치</span>
+                    <span class="stat-value" style="color: #6ee7b7; font-size: 10px;">JobLv.${playerState.jobLevel} (${playerState.jobExp || 0}/${jobReq})</span>
+                </div>
+                <div style="width: 100%; background: #334155; height: 5px; border-radius: 3px; overflow: hidden;">
+                    <div style="width: ${jobExpPercent}%; background: #10b981; height: 100%; transition: width 0.3s ease;"></div>
+                </div>
+            </div>
         </div>
-        <div class="stat-box"><span class="stat-label">이름</span><span class="stat-value">${playerState.name}</span></div>
-        <div class="stat-box"><span class="stat-label">성별</span><span class="stat-value">${playerState.gender || '남성'} (외형${playerState.appearance || 1})</span></div>
-        <div class="stat-box"><span class="stat-label">직업</span><span class="stat-value">${playerState.job}</span></div>
-        <div class="stat-box" style="grid-column: span 3; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="stat-label">베이스 경험치</span>
-                <span class="stat-value exp">Lv.${playerState.level} (${playerState.exp}/${baseReq})</span>
-            </div>
-            <div style="width: 100%; background: #334155; height: 6px; border-radius: 4px; margin-top: 8px; margin-bottom: 8px; overflow: hidden;">
-                <div style="width: ${baseExpPercent}%; background: #a855f7; height: 100%; transition: width 0.3s ease;"></div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                <span class="stat-label">잡 경험치</span>
-                <span class="stat-value" style="color: #6ee7b7;">JobLv.${playerState.jobLevel} (${playerState.jobExp || 0}/${jobReq})</span>
-            </div>
-            <div style="width: 100%; background: #334155; height: 6px; border-radius: 4px; margin-top: 8px; overflow: hidden;">
-                <div style="width: ${jobExpPercent}%; background: #10b981; height: 100%; transition: width 0.3s ease;"></div>
-            </div>
-        </div>
-
-        <div class="stat-section" style="grid-column: span 3; margin-top: 8px; margin-bottom: 4px;">
-            <h3 style="font-size: 14px; color: #10b981; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">상태</h3>
-        </div>
-        <div class="stat-box"><span class="stat-label">HP</span><span class="stat-value health">${playerState.currentHp} / ${playerState.maxHp}</span></div>
-        <div class="stat-box"><span class="stat-label">MP</span><span class="stat-value" style="color: #3b82f6;">${playerState.currentMp} / ${playerState.maxMp}</span></div>
-        <div class="stat-box"><span class="stat-label">소지금</span><span class="stat-value gold">${playerState.gold} G</span></div>
 
         ${statBoxesHtml}
 
         <div class="stat-section" style="grid-column: span 3; margin-top: 8px; margin-bottom: 4px;">
-            <h3 style="font-size: 14px; color: #a855f7; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">전투 능력치</h3>
+            <h3 style="font-size: 13px; color: #a855f7; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">전투 능력치</h3>
         </div>
-        <div style="grid-column: span 3; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%;">
-            <div class="stat-box" style="margin:0;"><span class="stat-label">근접 공격력</span><span class="stat-value">${playerState.meleeAttack}</span></div>
-            <div class="stat-box" style="margin:0;"><span class="stat-label">원거리 공격력</span><span class="stat-value">${playerState.rangedAttack}</span></div>
-            <div class="stat-box" style="margin:0;"><span class="stat-label">마법 공격력</span><span class="stat-value">${playerState.magicAttack}</span></div>
-            <div class="stat-box" style="margin:0;"><span class="stat-label">방어력</span><span class="stat-value">${playerState.defense}</span></div>
-            <div class="stat-box" style="margin:0;"><span class="stat-label">속도</span><span class="stat-value">${playerState.speed}</span></div>
-            <div class="stat-box" style="margin:0;"><span class="stat-label">명중률</span><span class="stat-value">${playerState.accuracy}%</span></div>
-            <div class="stat-box" style="margin:0;"><span class="stat-label">회피율</span><span class="stat-value">${playerState.evasion}%</span></div>
-            <div class="stat-box" style="margin:0;"><span class="stat-label">치명타 확률</span><span class="stat-value">${playerState.critChance}%</span></div>
-            <div class="stat-box" style="margin:0; grid-column: span 2;"><span class="stat-label">치명타 피해</span><span class="stat-value">${playerState.critDamage}%</span></div>
+        `;
+        
+        let strVal = playerState.getTotalStat('str');
+        let strBon = playerState.calcStatBonus('str', 2);
+        let eqAtk = playerState.getEquipBonus('attack') + playerState.getEquipBonus('meleeAttack');
+        let pasAtk = playerState.getPassiveBonus('attackBonus');
+        let multAtk = Math.round((playerState.getSetBonus('attackMult') + playerState.getMealBonus('meleeAttackMultBonus')) * 100);
+        let ttMelee = `STR${strVal}(${strBon})`;
+        if(eqAtk > 0) ttMelee += ` + 장비(${eqAtk})`;
+        if(pasAtk > 0) ttMelee += ` + 패시브(${pasAtk})`;
+        if(multAtk > 0) ttMelee += ` + 비율(${multAtk}%)`;
+
+        let dexVal = playerState.getTotalStat('dex');
+        let dexBon = playerState.calcStatBonus('dex', 2);
+        let eqRAtk = playerState.getEquipBonus('attack') + playerState.getEquipBonus('rangedAttack');
+        let pasRAtk = playerState.getPassiveBonus('attackBonus');
+        let multRAtk = Math.round((playerState.getSetBonus('attackMult') + playerState.getMealBonus('rangedAttackMultBonus')) * 100);
+        let ttRanged = `DEX${dexVal}(${dexBon})`;
+        if(eqRAtk > 0) ttRanged += ` + 장비(${eqRAtk})`;
+        if(pasRAtk > 0) ttRanged += ` + 패시브(${pasRAtk})`;
+        if(multRAtk > 0) ttRanged += ` + 비율(${multRAtk}%)`;
+
+        let intVal = playerState.getTotalStat('int');
+        let intBon = playerState.calcStatBonus('int', 2);
+        let eqMAtk = playerState.getEquipBonus('magicAttack') + playerState.getSetBonus('magicAttack');
+        let pasMAtk = playerState.getPassiveBonus('magicAttackBonus');
+        let multMAtk = Math.round((playerState.getSetBonus('magicAttackMult') + playerState.getMealBonus('magicAttackMultBonus')) * 100);
+        let ttMagic = `INT${intVal}(${intBon})`;
+        if(eqMAtk > 0) ttMagic += ` + 장비(${eqMAtk})`;
+        if(pasMAtk > 0) ttMagic += ` + 패시브(${pasMAtk})`;
+        if(multMAtk > 0) ttMagic += ` + 비율(${multMAtk}%)`;
+
+        let eqDefVal = playerState.getEquipBonus('defense') + playerState.getSetBonus('defense');
+        let multDef = Math.round((playerState.getSetBonus('defMult') + playerState.getMealBonus('defMultBonus')) * 100);
+        let ttEqDef = `장비(${eqDefVal})`;
+        if(multDef > 0) ttEqDef += ` + 효과(${multDef}%)`;
+        let vitVal = playerState.getTotalStat('vit');
+        let vitBon = playerState.calcStatBonus('vit', 1);
+        let pasDef = playerState.getPassiveBonus('defBonus');
+        let ttVitDef = `VIT${vitVal}(${vitBon})`;
+        if(pasDef > 0) ttVitDef += ` + 패시브(${pasDef})`;
+        let ttPDef = `[장비방어/뎀감] ${ttEqDef}  |  [스탯방어/고정] ${ttVitDef}`;
+
+        let eqMDefVal = playerState.getEquipBonus('magicDefense') + playerState.getSetBonus('magicDefense');
+        let ttEqMDef = `장비(${eqMDefVal})`;
+        let intMDefVal = playerState.getTotalStat('int');
+        let intMDefBon = playerState.calcStatBonus('int', 1);
+        let ttIntMDef = `INT${intMDefVal}(${intMDefBon})`;
+        let ttMDef = `[장비마방/뎀감] ${ttEqMDef}  |  [스탯마방/고정] ${ttIntMDef}`;
+
+        let agiVal = playerState.getTotalStat('agi');
+        let agiBon = playerState.calcStatBonus('agi', 1);
+        let eqSpd = playerState.getEquipBonus('speed') + playerState.getSetBonus('speed');
+        let pasSpd = playerState.getPassiveBonus('speedBonus') + playerState.getMealBonus('speedBonus');
+        let ttSpeed = `AGI${agiVal}(${agiBon})`;
+        if(eqSpd > 0) ttSpeed += ` + 장비(${eqSpd})`;
+        if(pasSpd > 0) ttSpeed += ` + 추가(${pasSpd})`;
+
+        let eqAcc = playerState.getEquipBonus('accuracy') + playerState.getSetBonus('accuracy');
+        let pasAcc = playerState.getPassiveBonus('hitRateBonus') + playerState.getMealBonus('accuracyBonus');
+        let dexAccBon = playerState.calcStatBonus('dex', 1);
+        let ttAcc = `기본(80) + DEX${dexVal}(${dexAccBon})`;
+        if(eqAcc > 0) ttAcc += ` + 장비(${eqAcc})`;
+        if(pasAcc > 0) ttAcc += ` + 추가(${pasAcc})`;
+
+        let eqEva = playerState.getEquipBonus('evasion') + playerState.getSetBonus('evasion');
+        let pasEva = playerState.getPassiveBonus('evadeBonus') + playerState.getMealBonus('evadeBonus');
+        let agiEvaBon = playerState.calcStatBonus('agi', 2);
+        let ttEva = `AGI${agiVal}(${agiEvaBon})`;
+        if(eqEva > 0) ttEva += ` + 장비(${eqEva})`;
+        if(pasEva > 0) ttEva += ` + 추가(${pasEva})`;
+
+        let lukVal = playerState.getTotalStat('luk');
+        let lukBon = playerState.calcStatBonus('luk', 0.5);
+        let eqCrit = playerState.getEquipBonus('critChance') + playerState.getSetBonus('critChance');
+        let pasCrit = playerState.getPassiveBonus('critBonus') + playerState.getMealBonus('critBonus');
+        let ttCrit = `기본(5%) + LUK${lukVal}(${lukBon}%)`;
+        if(eqCrit > 0) ttCrit += ` + 장비(${eqCrit}%)`;
+        if(pasCrit > 0) ttCrit += ` + 추가(${pasCrit}%)`;
+
+        let lukCritBon = playerState.calcStatBonus('luk', 1);
+        let eqCritDmg = playerState.getEquipBonus('critDamage') + playerState.getSetBonus('critDamage');
+        let pasCritDmg = playerState.getPassiveBonus('critDamageBonus') + playerState.getMealBonus('critDamageBonus');
+        let ttCritDmg = `기본(200%) + LUK${lukVal}(${lukCritBon}%)`;
+        if(eqCritDmg > 0) ttCritDmg += ` + 장비(${eqCritDmg}%)`;
+        if(pasCritDmg > 0) ttCritDmg += ` + 추가(${pasCritDmg}%)`;
+
+        statsContainer.innerHTML += `
+        <div style="grid-column: span 3; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; width: 100%;">
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center;" title="${ttMelee}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">근접 공격</span><span class="stat-value" style="font-size:11px;">${playerState.meleeAttack}</span></div>
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center;" title="${ttRanged}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">원거리 공격</span><span class="stat-value" style="font-size:11px;">${playerState.rangedAttack}</span></div>
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center;" title="${ttMagic}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">마법 공격</span><span class="stat-value" style="font-size:11px;">${playerState.magicAttack}</span></div>
+            
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center;" title="${ttPDef}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">물리 방어</span><span class="stat-value" style="font-size:11px;">${playerState.equipDefense} + ${playerState.vitDefense}</span></div>
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center;" title="${ttMDef}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">마법 방어</span><span class="stat-value" style="color: #c084fc; font-size:11px;">${playerState.equipMagicDefense || 0} + ${playerState.intDefense || 0}</span></div>
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center;" title="${ttSpeed}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">전투 속도</span><span class="stat-value" style="font-size:11px;">${playerState.speed}</span></div>
+            
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center;" title="${ttAcc}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">명중률</span><span class="stat-value" style="font-size:11px;">${playerState.accuracy}%</span></div>
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center;" title="${ttEva}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">회피율</span><span class="stat-value" style="font-size:11px;">${playerState.evasion}%</span></div>
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center;" title="${ttCrit}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">치명 확률</span><span class="stat-value" style="font-size:11px;">${playerState.critChance}%</span></div>
+            
+            <div class="stat-box" style="margin:0; padding:6px; display:flex; justify-content:space-between; align-items:center; grid-column: span 3;" title="${ttCritDmg}"><span class="stat-label" style="font-size:10px; white-space:nowrap;">치명타 피해</span><span class="stat-value" style="font-size:11px;">${playerState.critDamage}%</span></div>
         </div>
     `;
 
@@ -865,6 +1316,7 @@ window.upgradeSkill = function(skillName) {
     const newSkills = { ...playerState.skills };
     newSkills[skillName] = level + 1;
     updatePlayerState({ skills: newSkills });
+    if (typeof DB !== 'undefined' && DB.backupToServer) DB.backupToServer();
 };
 
 window.upgradeStat = function(statKey) {
@@ -880,6 +1332,7 @@ window.upgradeStat = function(statKey) {
             baseStats: newStats,
             statPoints: playerState.statPoints - cost
         });
+        if (typeof DB !== 'undefined' && DB.backupToServer) DB.backupToServer();
     }
 };
 
@@ -922,36 +1375,19 @@ window.renderInventory = function() {
     if (!inventoryList) return;
     inventoryList.innerHTML = '';
     
-    const groupedInventory = [];
-    playerState.inventory.forEach((item, originalIndex) => {
-        if (!item) return;
-        
-        if (item.type === 'consumable' || item.type === 'material' || item.type === 'etc') {
-            const existing = groupedInventory.find(g => g.item.name === item.name);
-            if (existing) {
-                existing.count++;
-                existing.indices.push(originalIndex);
-            } else {
-                groupedInventory.push({ item, count: 1, indices: [originalIndex] });
-            }
-        } else {
-            groupedInventory.push({ item, count: 1, indices: [originalIndex] });
-        }
-    });
-    
-    groupedInventory.forEach((group) => {
-        const item = group.item;
-        const count = group.count;
-        const targetIndex = group.indices[0];
+    playerState.inventory.forEach((invItem, index) => {
+        if (!invItem) return;
+        const baseItem = ITEM_DB[invItem.id];
+        if (!baseItem) return;
         
         // 카테고리 필터링
         if (currentInvFilter !== 'all') {
-            const isEquip = ['weapon', 'body', 'head', 'shoes', 'pants', 'subWeapon'].includes(item.type) || item.type.startsWith('accessory');
+            const isEquip = ['weapon', 'body', 'head', 'shoes', 'pants', 'subWeapon'].includes(baseItem.type) || baseItem.type.startsWith('accessory');
             if (currentInvFilter === 'equip' && !isEquip) return;
-            if (currentInvFilter === 'consumable' && item.type !== 'consumable') return;
-            if (currentInvFilter === 'material' && item.type !== 'material') return;
-            if (currentInvFilter === 'etc' && item.type !== 'etc') return;
-            if (currentInvFilter === 'event' && item.type !== 'event') return;
+            if (currentInvFilter === 'consumable' && baseItem.type !== 'consumable') return;
+            if (currentInvFilter === 'material' && baseItem.type !== 'material') return;
+            if (currentInvFilter === 'etc' && baseItem.type !== 'etc') return;
+            if (currentInvFilter === 'event' && baseItem.type !== 'event') return;
         }
 
         const div = document.createElement('div');
@@ -964,19 +1400,23 @@ window.renderInventory = function() {
         div.style.borderRadius = '4px';
 
         let btnHtml = '';
-        const isEquip = ['weapon', 'body', 'head', 'shoes', 'pants', 'subWeapon'].includes(item.type) || item.type.startsWith('accessory');
+        const isEquip = ['weapon', 'body', 'head', 'shoes', 'pants', 'subWeapon'].includes(baseItem.type) || baseItem.type.startsWith('accessory');
         if (isEquip) {
-            btnHtml = `<button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto;" onclick="equipItem(${targetIndex})">장착</button>`;
-        } else if (item.type === 'consumable') {
-            btnHtml = `<button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #10b981; color: #6ee7b7;" onclick="useItem(${targetIndex})">사용</button>`;
+            btnHtml = `<button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto;" onclick="equipItem(${index})">장착</button>`;
+        } else if (baseItem.type === 'consumable') {
+            btnHtml = `<button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #10b981; color: #6ee7b7;" onclick="useItem('${invItem.id}')">사용</button>`;
         }
 
-        const displayName = count > 1 ? `${item.name} <span style="color: #fcd34d; font-size: 13px;">x ${count}</span>` : item.name;
+        const countStr = invItem.count && invItem.count > 1 ? ` <span style="color: #fcd34d; font-size: 13px;">x ${invItem.count}</span>` : '';
+        const enhanceStr = invItem.enhance ? `<span style="color: #3b82f6;">+${invItem.enhance} </span>` : '';
+        const displayName = `${enhanceStr}${baseItem.name}${countStr}`;
+
+        const combinedItem = { ...baseItem, ...invItem };
 
         div.innerHTML = `
-            <div title="${getItemTooltipText(item)}">
+            <div title="${getItemTooltipText(combinedItem)}">
                 <div style="font-weight: 600; font-size: 14px; color: #f8fafc;">${displayName}</div>
-                <div style="font-size: 12px; color: #94a3b8;">${item.desc}</div>
+                <div style="font-size: 12px; color: #94a3b8;">${baseItem.desc}</div>
             </div>
             <div>${btnHtml}</div>
         `;
@@ -986,8 +1426,16 @@ window.renderInventory = function() {
 
 // 아이템 장착 로직
 window.equipItem = function(index) {
-    const item = playerState.inventory[index];
-    let slot = item.type;
+    const invItem = playerState.inventory[index];
+    if (!invItem) return;
+    const baseItem = ITEM_DB[invItem.id];
+    if (!baseItem) return;
+
+    if (baseItem.reqLevel && playerState.level < baseItem.reqLevel) {
+        showToast(`레벨이 부족하여 장착할 수 없습니다. (요구 레벨: ${baseItem.reqLevel})`, 'error');
+        return;
+    }
+    let slot = baseItem.type;
     
     // accessory 처리 (비어있는 곳 우선)
     if (slot.startsWith('accessory')) {
@@ -1008,7 +1456,7 @@ window.equipItem = function(index) {
     }
     
     // 새 아이템 장착
-    newEquip[slot] = item;
+    newEquip[slot] = invItem;
     
     updatePlayerState({ equipment: newEquip, inventory: newInv });
     renderInventory();
@@ -1032,22 +1480,41 @@ window.unequipItem = function(slot) {
 };
 
 // 소모품 사용 로직
-window.useItem = function(index) {
-    const item = playerState.inventory[index];
-    const newInv = [...playerState.inventory];
-    newInv.splice(index, 1);
+window.useItem = function(itemId) {
+    const baseItem = ITEM_DB[itemId];
+    if (!baseItem) return;
 
-    if (item.healHp) {
-        const hp = Math.min(playerState.maxHp, playerState.currentHp + item.healHp);
-        updatePlayerState({ currentHp: hp, inventory: newInv });
-        alert(`${item.name}을(를) 사용하여 체력을 회복했습니다.`);
-    } else if (item.healMp) {
-        const mp = Math.min(playerState.maxMp, playerState.currentMp + item.healMp);
-        updatePlayerState({ currentMp: mp, inventory: newInv });
-        alert(`${item.name}을(를) 사용하여 마나를 회복했습니다.`);
+    let used = false;
+    if (baseItem.healHp) {
+        const hp = Math.min(playerState.maxHp, playerState.currentHp + baseItem.healHp);
+        updatePlayerState({ currentHp: hp });
+        window.gameAlert(`${baseItem.name}을(를) 사용하여 체력을 회복했습니다.`);
+        used = true;
     }
-    renderInventory();
-    renderPlayerStats();
+    if (baseItem.healMp) {
+        const mp = Math.min(playerState.maxMp, playerState.currentMp + baseItem.healMp);
+        updatePlayerState({ currentMp: mp });
+        if (!baseItem.healHp) window.gameAlert(`${baseItem.name}을(를) 사용하여 마나를 회복했습니다.`);
+        used = true;
+    }
+    if (baseItem.curePoison) {
+        if (playerState.statusEffects && playerState.statusEffects["Poison"]) {
+            let s = {...playerState.statusEffects};
+            delete s["Poison"];
+            updatePlayerState({ statusEffects: s });
+            window.gameAlert(`${baseItem.name}을(를) 사용하여 맹독을 해독했습니다.`);
+            used = true;
+        } else {
+            window.gameAlert("중독 상태가 아닙니다.");
+            return;
+        }
+    }
+    
+    if (used) {
+        window.loseItem(itemId, 1);
+        renderInventory();
+        renderPlayerStats();
+    }
 };
 
 // 창고 UI 렌더링
@@ -1058,27 +1525,15 @@ window.renderWarehouse = function() {
     const warehouse = db.accounts[accId].warehouse || [];
 
     warehouseInvList.innerHTML = '';
-    const groupedInv = [];
-    playerState.inventory.forEach((item, index) => {
-        if (!item) return;
-        if (item.type === 'consumable' || item.type === 'material' || item.type === 'etc') {
-            const existing = groupedInv.find(g => g.item.name === item.name);
-            if (existing) {
-                existing.count++;
-                existing.indices.push(index);
-            } else {
-                groupedInv.push({ item, count: 1, indices: [index] });
-            }
-        } else {
-            groupedInv.push({ item, count: 1, indices: [index] });
-        }
-    });
-
-    groupedInv.forEach((group) => {
-        const item = group.item;
-        const count = group.count;
-        const targetIndex = group.indices[0];
-        const displayName = count > 1 ? `${item.name} (x${count})` : item.name;
+    
+    playerState.inventory.forEach((invItem, targetIndex) => {
+        if (!invItem) return;
+        const baseItem = ITEM_DB[invItem.id];
+        if (!baseItem) return;
+        
+        const countStr = invItem.count && invItem.count > 1 ? ` (x${invItem.count})` : '';
+        const enhanceStr = invItem.enhance ? `+${invItem.enhance} ` : '';
+        const displayName = `${enhanceStr}${baseItem.name}${countStr}`;
 
         const div = document.createElement('div');
         div.className = 'action-btn';
@@ -1087,34 +1542,20 @@ window.renderWarehouse = function() {
         div.style.textAlign = 'left';
         div.style.display = 'flex';
         div.style.justifyContent = 'space-between';
-        div.title = getItemTooltipText(item);
+        div.title = getItemTooltipText({ ...baseItem, ...invItem });
         div.innerHTML = `<span>${displayName}</span> <span style="color:#94a3b8;">▶ 보관</span>`;
         div.addEventListener('click', () => storeInWarehouse(targetIndex));
         warehouseInvList.appendChild(div);
     });
 
     warehouseStorageList.innerHTML = '';
-    const groupedWh = [];
-    warehouse.forEach((item, index) => {
-        if (!item) return;
-        if (item.type === 'consumable' || item.type === 'material' || item.type === 'etc') {
-            const existing = groupedWh.find(g => g.item.name === item.name);
-            if (existing) {
-                existing.count++;
-                existing.indices.push(index);
-            } else {
-                groupedWh.push({ item, count: 1, indices: [index] });
-            }
-        } else {
-            groupedWh.push({ item, count: 1, indices: [index] });
-        }
-    });
-
-    groupedWh.forEach((group) => {
-        const item = group.item;
-        const count = group.count;
-        const targetIndex = group.indices[0];
-        const displayName = count > 1 ? `${item.name} (x${count})` : item.name;
+    warehouse.forEach((whItem, targetIndex) => {
+        if (!whItem) return;
+        const baseItem = ITEM_DB[whItem.id] || { name: whItem.id || '알 수 없는 아이템' };
+        
+        const countStr = whItem.count && whItem.count > 1 ? ` (x${whItem.count})` : '';
+        const enhanceStr = whItem.enhance ? `+${whItem.enhance} ` : '';
+        const displayName = `${enhanceStr}${baseItem.name}${countStr}`;
 
         const div = document.createElement('div');
         div.className = 'action-btn';
@@ -1123,7 +1564,7 @@ window.renderWarehouse = function() {
         div.style.textAlign = 'left';
         div.style.display = 'flex';
         div.style.justifyContent = 'space-between';
-        div.title = getItemTooltipText(item);
+        div.title = getItemTooltipText({ ...baseItem, ...whItem });
         div.innerHTML = `<span style="color:#94a3b8;">◀ 꺼내기</span> <span>${displayName}</span>`;
         div.addEventListener('click', () => takeFromWarehouse(targetIndex));
         warehouseStorageList.appendChild(div);
@@ -1160,17 +1601,21 @@ window.takeFromWarehouse = function(index) {
     renderWarehouse();
 };
 
-window.renderShopCategoryList = function(categoryType, containerId) {
+window.renderShopCategoryList = function(categoryTypes, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
     container.innerHTML = '';
     
+    // Ensure categoryTypes is an array
+    if (!Array.isArray(categoryTypes)) {
+        categoryTypes = [categoryTypes];
+    }
+    
     // ITEM_DB에서 해당 카테고리의 아이템만 필터링
     const items = Object.entries(ITEM_DB)
         .filter(([_, item]) => {
-            if (categoryType === 'weapon' || categoryType === 'body') return item.type === categoryType || item.type === 'accessory';
-            return item.type === categoryType;
+            return categoryTypes.includes(item.type);
         });
 
     if (items.length === 0) {
@@ -1179,9 +1624,6 @@ window.renderShopCategoryList = function(categoryType, containerId) {
     }
 
     items.forEach(([key, item]) => {
-        // 무기/방어구 상점에서 장신구는 모두 보이게 하거나 방어구 쪽에만 보이게 처리 가능
-        // 여기서는 무기상점(weapon)은 무기만, 방어구상점(body)은 방어구와 장신구를 띄우도록 조건 추가
-        if (categoryType === 'weapon' && item.type === 'accessory') return;
         
         let color = '#cbd5e1';
         if (item.type === 'weapon') color = '#fca5a5';
@@ -1192,11 +1634,11 @@ window.renderShopCategoryList = function(categoryType, containerId) {
         div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); border: 1px solid #334155; padding: 8px; border-radius: 4px;';
         
         div.innerHTML = `
-            <div>
+            <div title="${getItemTooltipText(item)}">
                 <div style="font-weight: 600; font-size: 13px; color: ${color};">${item.name} <span style="font-size:10px;color:#94a3b8;">${item.subType ? `[${item.subType}]` : ''}</span></div>
                 <div style="font-size: 11px; color: #94a3b8; margin: 2px 0;">${item.desc}</div>
             </div>
-            <button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: ${color}; color: ${color}; min-width: 80px;" onclick="buyShopItem('${key}')">구매 (${item.price}G)</button>
+            <button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #ef4444; color: #fca5a5; min-width: 80px;" onclick="buyShopItem('${key}')">${item.price.toLocaleString()} G</button>
         `;
         container.appendChild(div);
     });
@@ -1207,22 +1649,25 @@ window.buyShopItem = function(itemKey) {
     if (!itemData) return;
     
     if (playerState.gold < itemData.price) {
-        alert("골드가 부족합니다.");
+        window.gameAlert("골드가 부족합니다.");
         return;
     }
     
-    // 깊은 복사로 인벤토리에 추가 (스탯 등의 객체가 오염되지 않도록)
-    const newItem = JSON.parse(JSON.stringify(itemData));
+// 깊은 복사 대신 gainItem 사용
+    if (typeof window.gainItem === 'function') {
+        window.gainItem(itemKey, 1);
+        updatePlayerState({ gold: playerState.gold - itemData.price });
+    } else {
+        const newItem = { id: itemKey, count: 1 };
+        const newInv = [...playerState.inventory];
+        newInv.push(newItem);
+        updatePlayerState({
+            gold: playerState.gold - itemData.price,
+            inventory: newInv
+        });
+    }
     
-    const newInv = [...playerState.inventory];
-    newInv.push(newItem);
-    
-    updatePlayerState({
-        gold: playerState.gold - itemData.price,
-        inventory: newInv
-    });
-    
-    alert(`[${itemData.name}]을(를) 구매했습니다!`);
+    window.gameAlert(`[${itemData.name}]을(를) 구매했습니다!`);
     renderPlayerStats();
 };
 
@@ -1232,51 +1677,23 @@ window.renderShopSellList = function() {
     if (!shopSellList) return;
     
     shopSellList.innerHTML = '';
-    
-    // 장착 중인 아이템 인덱스 파악
-    const equippedIndices = new Set();
-    if (playerState.equipment) {
-        Object.values(playerState.equipment).forEach(eq => {
-            if (eq) {
-                // 인벤토리 내에서 동일한 참조를 가지는 아이템을 찾지만,
-                // 안전하게 하기 위해 인벤토리에서 장비는 판매 리스트에서 아예 제외하는 것이 나을 수도 있음.
-                // 또는 타입이 장비인 것을 제외? "장착 중인 장비를 제외"하라는 것은 장착 안된 장비는 팔 수 있다는 뜻.
-                // 그러나 현재 구조상 equipment 객체에 따로 복사되어 들어가는지 참조인지 확인 필요.
-                // equipItem() 로직을 보면 인벤토리에서 splice 로 제거하고 equipment 에 넣으므로,
-                // 인벤토리에는 장착 중인 아이템이 없습니다!
-            }
-        });
-    }
 
-    const groupedInv = [];
-    playerState.inventory.forEach((item, index) => {
-        if (!item) return;
-        if (item.type === 'consumable' || item.type === 'material' || item.type === 'etc') {
-            const existing = groupedInv.find(g => g.item.name === item.name);
-            if (existing) {
-                existing.count++;
-                existing.indices.push(index);
-            } else {
-                groupedInv.push({ item, count: 1, indices: [index] });
-            }
-        } else {
-            groupedInv.push({ item, count: 1, indices: [index] });
-        }
-    });
-
-    if (groupedInv.length === 0) {
+    if (!playerState.inventory || playerState.inventory.length === 0) {
         shopSellList.innerHTML = '<div style="color: #64748b; font-size: 12px; padding: 8px;">판매할 아이템이 없습니다.</div>';
         return;
     }
 
-    groupedInv.forEach((group) => {
-        const item = group.item;
-        const count = group.count;
-        const targetIndex = group.indices[0]; // 대표로 하나만 팝니다.
-        const displayName = count > 1 ? `${item.name} <span style="color: #fcd34d; font-size: 13px;">x ${count}</span>` : item.name;
+    playerState.inventory.forEach((invItem, targetIndex) => {
+        if (!invItem) return;
+        const baseItem = ITEM_DB[invItem.id];
+        if (!baseItem) return;
+
+        const countStr = invItem.count && invItem.count > 1 ? ` <span style="color: #fcd34d; font-size: 13px;">x ${invItem.count}</span>` : '';
+        const enhanceStr = invItem.enhance ? `<span style="color: #3b82f6;">+${invItem.enhance} </span>` : '';
+        const displayName = `${enhanceStr}${baseItem.name}${countStr}`;
         
         // 아이템의 price가 없으면 기본값 10
-        const itemPrice = item.price || 10;
+        const itemPrice = baseItem.price || 10;
         const sellPrice = Math.floor(itemPrice / 2);
 
         const div = document.createElement('div');
@@ -1288,12 +1705,14 @@ window.renderShopSellList = function() {
         div.style.padding = '8px';
         div.style.borderRadius = '4px';
 
+        const combinedItem = { ...baseItem, ...invItem };
+
         div.innerHTML = `
-            <div title="${getItemTooltipText(item)}">
+            <div title="${getItemTooltipText(combinedItem)}">
                 <div style="font-weight: 600; font-size: 13px; color: #cbd5e1;">${displayName}</div>
-                <div style="font-size: 11px; color: #94a3b8;">${item.desc}</div>
+                <div style="font-size: 11px; color: #94a3b8;">${baseItem.desc}</div>
             </div>
-            <button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #f59e0b; color: #fcd34d;" onclick="sellShopItem(${targetIndex}, ${sellPrice})">판매 (+${sellPrice}G)</button>
+            <button class="action-btn" style="padding: 4px 8px; font-size: 12px; width: auto; border-color: #10b981; color: #6ee7b7; min-width: 80px;" onclick="sellShopItem('${invItem.id}', ${sellPrice}, ${targetIndex})">${sellPrice.toLocaleString()} G</button>
         `;
         shopSellList.appendChild(div);
     });
@@ -1315,3 +1734,166 @@ window.sellShopItem = function(index, sellPrice) {
     renderShopSellList(); // 리스트 갱신
     renderPlayerStats();  // 골드 갱신
 };
+
+window.renderQuestList = function(cycle) {
+    const modal = document.getElementById('quest-modal');
+    const titleEl = document.getElementById('quest-modal-title');
+    const container = document.getElementById('quest-list-container');
+    const activeCountEl = document.getElementById('quest-active-count');
+    const showLowCb = document.getElementById('cb-quest-show-low');
+    
+    if (!modal || !container || typeof QUEST_DB === 'undefined') return;
+    
+    modal.dataset.currentCycle = cycle;
+    titleEl.textContent = cycle === 'daily' ? '일일 의뢰 수주' : '주간 의뢰 수주';
+    
+    let activeQuests = playerState.quests.active || [];
+    activeCountEl.textContent = activeQuests.length;
+    
+    container.innerHTML = '';
+    
+    const showLow = showLowCb ? showLowCb.checked : false;
+    
+    for (const [qId, qData] of Object.entries(QUEST_DB)) {
+        if (qData.cycle !== cycle) continue;
+        
+        // 레벨 필터링
+        if (playerState.level < qData.reqLevel) continue; // 최소 레벨 미달
+        if (playerState.level >= qData.reqLevel + 20 && !showLow) continue; // 수준 낮은 의뢰 숨김
+        
+        const isHistory = playerState.quests.history && playerState.quests.history[qId];
+        if (isHistory && cycle === 'daily') continue; // 오늘 이미 깬 일일퀘스트
+        if (isHistory && cycle === 'weekly') continue; // 이번주 이미 깬 주간퀘스트
+        
+        const activeQ = activeQuests.find(q => q.id === qId);
+        const isCompleted = activeQ ? activeQ.isComplete : false;
+        
+        // 아이템 납품 퀘스트의 경우 인벤토리 체크
+        let currentProgress = activeQ ? activeQ.progress : 0;
+        let isReadyToComplete = isCompleted;
+        
+        if (activeQ && qData.type === 'delivery') {
+            const hasItem = playerState.inventory.find(i => i.id === qData.target);
+            currentProgress = hasItem ? hasItem.count : 0;
+            if (currentProgress >= qData.requiredCount) {
+                isReadyToComplete = true;
+            } else {
+                isReadyToComplete = false;
+                if(activeQ.isComplete) activeQ.isComplete = false; // 소지품 버렸을경우 대비
+            }
+        }
+        
+        const div = document.createElement('div');
+        div.style.cssText = "background: rgba(15,23,42,0.8); border: 1px solid #334155; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px;";
+        
+        let statusBadge = '';
+        if (activeQ) {
+            if (isReadyToComplete) {
+                statusBadge = '<span style="color: #34d399; font-size: 11px; font-weight: bold; padding: 2px 6px; background: rgba(52, 211, 153, 0.2); border-radius: 4px;">달성 완료</span>';
+            } else {
+                statusBadge = '<span style="color: #3b82f6; font-size: 11px; font-weight: bold; padding: 2px 6px; background: rgba(59, 130, 246, 0.2); border-radius: 4px;">진행 중</span>';
+            }
+        }
+        
+        let rewardText = `골드 ${qData.rewards.gold.toLocaleString()}G, EXP ${qData.rewards.exp}`;
+        if (qData.rewards.items) {
+            qData.rewards.items.forEach(rItem => {
+                const iData = window.ITEM_DB ? window.ITEM_DB[rItem.id] : null;
+                if(iData) rewardText += `, ${iData.name} x${rItem.count}`;
+            });
+        }
+        
+        let progressText = activeQ ? `<div style="font-size: 12px; color: ${isReadyToComplete ? '#34d399' : '#f59e0b'}; margin-top: 4px;">진척도: ${Math.min(currentProgress, qData.requiredCount)} / ${qData.requiredCount}</div>` : '';
+
+        let actionBtnHTML = '';
+        if (activeQ) {
+            if (isReadyToComplete) {
+                actionBtnHTML = `<button class="action-btn" style="border-color: #34d399; color: #6ee7b7;" onclick="completeQuest('${qId}')">보상 받기</button>`;
+            } else {
+                actionBtnHTML = `<button class="action-btn" style="border-color: #ef4444; color: #fca5a5;" onclick="abandonQuest('${qId}')">포기하기</button>`;
+            }
+        } else {
+            actionBtnHTML = `<button class="action-btn" style="border-color: #3b82f6; color: #93c5fd;" onclick="acceptQuest('${qId}')">수주하기</button>`;
+        }
+        
+        div.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-weight: bold; color: #e2e8f0; font-size: 14px;">${qData.name} <span style="font-size: 11px; color: #94a3b8; font-weight: normal;">(Lv.${qData.reqLevel})</span></div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px; font-style: italic;">"${qData.desc}"</div>
+                </div>
+                ${statusBadge}
+            </div>
+            <div style="font-size: 12px; color: #fcd34d; background: rgba(252, 211, 77, 0.1); padding: 4px 8px; border-radius: 4px;">보상: ${rewardText}</div>
+            ${progressText}
+            <div style="margin-top: 4px;">${actionBtnHTML}</div>
+        `;
+        
+        container.appendChild(div);
+    }
+    
+    if (container.children.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 20px; font-size: 13px;">현재 수주 가능한 의뢰가 없습니다.</div>';
+    }
+    
+    modal.style.display = 'flex';
+};
+
+window.acceptQuest = function(qId) {
+    if (playerState.quests.active.length >= 3) {
+        window.gameAlert("의뢰는 최대 3개까지만 동시에 진행할 수 있습니다.");
+        return;
+    }
+    playerState.quests.active.push({ id: qId, progress: 0, isComplete: false });
+    updatePlayerState({ quests: playerState.quests });
+    renderQuestList(document.getElementById('quest-modal').dataset.currentCycle);
+};
+
+window.abandonQuest = function(qId) {
+    window.gameConfirm("정말로 이 의뢰를 포기하시겠습니까? 진척도가 초기화됩니다.").then(res => {
+        if(res) {
+            playerState.quests.active = playerState.quests.active.filter(q => q.id !== qId);
+            updatePlayerState({ quests: playerState.quests });
+            renderQuestList(document.getElementById('quest-modal').dataset.currentCycle);
+        }
+    });
+};
+
+window.completeQuest = function(qId) {
+    const qData = window.QUEST_DB[qId];
+    if (!qData) return;
+    
+    if (qData.type === 'delivery') {
+        if (!loseItem(qData.target, qData.requiredCount)) {
+            window.gameAlert("납품할 아이템이 부족합니다.");
+            renderQuestList(document.getElementById('quest-modal').dataset.currentCycle);
+            return;
+        }
+    }
+    
+    playerState.quests.active = playerState.quests.active.filter(q => q.id !== qId);
+    
+    // 기록에 남김
+    if (!playerState.quests.history) playerState.quests.history = {};
+    playerState.quests.history[qId] = true;
+    
+    // 보상 지급
+    updatePlayerState({
+        gold: playerState.gold + qData.rewards.gold
+    });
+    addExp(qData.rewards.exp, 0); // 잡경험치 없음
+    
+    let rewardMsg = `의뢰 완료! 골드 ${qData.rewards.gold.toLocaleString()}G, 경험치 ${qData.rewards.exp}를 획득했습니다.`;
+    
+    if (qData.rewards.items) {
+        qData.rewards.items.forEach(rItem => {
+            gainItem(rItem.id, rItem.count);
+            rewardMsg += `\n[${rItem.id}] x${rItem.count} 획득!`;
+        });
+    }
+    
+    updatePlayerState({ quests: playerState.quests });
+    window.gameAlert(rewardMsg, 'success', true);
+    renderQuestList(document.getElementById('quest-modal').dataset.currentCycle);
+};
+

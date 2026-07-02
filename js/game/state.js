@@ -106,6 +106,106 @@ document.addEventListener('DOMContentLoaded', () => {
         playerState.jobExp = 0;
     }
 
+    // 초보자의 옷 -> 천옷 마이그레이션
+    if (playerState.inventory) {
+        playerState.inventory.forEach(item => {
+            if (item && item.id === '초보자의 옷') item.id = '천옷';
+            if (item && item.name === '초보자의 옷') item.name = '천옷';
+        });
+    }
+    if (playerState.equipment) {
+        for (let slot in playerState.equipment) {
+            if (playerState.equipment[slot] && playerState.equipment[slot].id === '초보자의 옷') {
+                playerState.equipment[slot].id = '천옷';
+            }
+        }
+    }
+
+    // 아이템 스키마 마이그레이션 (전체 객체 -> 레퍼런스 및 스택)
+    if (playerState.inventory) {
+        let invMigrated = false;
+        let newInventory = [];
+        playerState.inventory.forEach(item => {
+            if (!item) return;
+            // 예전 방식(name 속성이 직접 존재)이라면 마이그레이션
+            if (item.name && !item.id) {
+                invMigrated = true;
+                const baseItem = ITEM_DB[item.name];
+                if (!baseItem) return;
+
+                if (baseItem.type === 'consumable' || baseItem.type === 'material' || baseItem.type === 'etc') {
+                    // 스택형 아이템
+                    let existing = newInventory.find(i => i.id === baseItem.name);
+                    if (existing) {
+                        existing.count += (item.count || 1);
+                    } else {
+                        newInventory.push({ id: baseItem.name, count: item.count || 1 });
+                    }
+                } else {
+                    // 장비형 아이템
+                    newInventory.push({ id: baseItem.name, enhance: item.enhance || 0 });
+                }
+            } else {
+                // 이미 마이그레이션 된 아이템
+                newInventory.push(item);
+            }
+        });
+        if (invMigrated) {
+            playerState.inventory = newInventory;
+        }
+    }
+
+    if (playerState.equipment) {
+        for (let slot in playerState.equipment) {
+            const eq = playerState.equipment[slot];
+            if (eq && eq.name && !eq.id) {
+                playerState.equipment[slot] = { id: eq.name, enhance: eq.enhance || 0 };
+            }
+        }
+    }
+
+    // 의뢰(Quest) 리셋 로직
+    if (playerState.quests) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const weekStartStr = getStartOfWeek(new Date()).toISOString().split('T')[0];
+        let questUpdated = false;
+
+        if (playerState.quests.lastDailyReset !== todayStr) {
+            playerState.quests.lastDailyReset = todayStr;
+            // 일일 의뢰 관련 초기화 로직: history에서 일일 의뢰 삭제
+            if (playerState.quests.history) {
+                for (let qId in playerState.quests.history) {
+                    if (QUEST_DB[qId] && QUEST_DB[qId].cycle === 'daily') {
+                        delete playerState.quests.history[qId];
+                    }
+                }
+            }
+            questUpdated = true;
+        }
+        if (playerState.quests.lastWeeklyReset !== weekStartStr) {
+            playerState.quests.lastWeeklyReset = weekStartStr;
+            // 주간 의뢰 초기화
+            if (playerState.quests.history) {
+                for (let qId in playerState.quests.history) {
+                    if (QUEST_DB[qId] && QUEST_DB[qId].cycle === 'weekly') {
+                        delete playerState.quests.history[qId];
+                    }
+                }
+            }
+            questUpdated = true;
+        }
+        
+        // active 퀘스트 중 삭제된(DB에 없는) 퀘스트 정리
+        const validActiveQuests = playerState.quests.active.filter(q => QUEST_DB && QUEST_DB[q.id]);
+        if (validActiveQuests.length !== playerState.quests.active.length) {
+            playerState.quests.active = validActiveQuests;
+            questUpdated = true;
+        }
+        
+        // proxy를 통하므로 사실 직접 수정해도 되지만 안전하게 강제 렌더링
+        if (questUpdated) updatePlayerState({ quests: playerState.quests });
+    }
+
     // 10초마다 피로도 1분(60000ms) 경과 체크 후 회복
     setInterval(() => {
         if (!playerState) return;
@@ -135,3 +235,48 @@ function updatePlayerState(updates) {
         }
     }
 }
+
+window.gainItem = function(itemId, count = 1, options = {}) {
+    if (!playerState || !playerState.inventory) return;
+    const baseItem = ITEM_DB[itemId];
+    if (!baseItem) return;
+    
+    let newInv = [...playerState.inventory];
+    if (baseItem.type === 'consumable' || baseItem.type === 'material' || baseItem.type === 'etc') {
+        let existing = newInv.find(i => i.id === itemId);
+        if (existing) {
+            existing.count += count;
+        } else {
+            newInv.push({ id: itemId, count: count });
+        }
+    } else {
+        // 장비류 (Stack 불가)
+        for(let i=0; i<count; i++) {
+            newInv.push({ id: itemId, enhance: options.enhance || 0, element: options.element || null, cards: options.cards || [] });
+        }
+    }
+    updatePlayerState({ inventory: newInv });
+};
+
+window.loseItem = function(itemId, count = 1) {
+    if (!playerState || !playerState.inventory) return false;
+    let newInv = [...playerState.inventory];
+    let existingIndex = newInv.findIndex(i => i.id === itemId);
+    
+    if (existingIndex !== -1) {
+        let existing = newInv[existingIndex];
+        if (existing.count && existing.count >= count) {
+            existing.count -= count;
+            if (existing.count <= 0) {
+                newInv.splice(existingIndex, 1);
+            }
+            updatePlayerState({ inventory: newInv });
+            return true;
+        } else if (!existing.count && count === 1) {
+            newInv.splice(existingIndex, 1);
+            updatePlayerState({ inventory: newInv });
+            return true;
+        }
+    }
+    return false;
+};
